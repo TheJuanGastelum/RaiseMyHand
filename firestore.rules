@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// Security model:
+// - Anyone can READ a session and its queue (a teacher's board and a
+//   student's ticket both need to see the live list without necessarily
+//   having written to it).
+// - Only a signed-in visitor (anonymous auth counts) may WRITE, and only
+//   documents that match the shape the app actually creates. This keeps
+//   out drive-by bots that find the URL but never load the app's JS,
+//   without requiring students or teachers to ever see a login screen.
+// - Nobody may UPDATE an existing session or queue entry — the app only
+//   ever creates or deletes them, so update is closed entirely.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /sessions/{code} {
+      allow read: if true;
+      allow create: if request.auth != null && isValidSession(request.resource.data);
+      allow update: if false;
+      allow delete: if request.auth != null;
+
+      match /queue/{entryId} {
+        allow read: if true;
+        allow create: if request.auth != null && isValidEntry(request.resource.data);
+        allow update: if false;
+        allow delete: if request.auth != null;
+      }
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasOnly(['code', 'className', 'createdAt'])
+        && data.code is string && data.code.size() <= 8
+        && data.className is string && data.className.size() <= 60
+        && data.createdAt is number;
+    }
+
+    function isValidEntry(data) {
+      return data.keys().hasOnly(['name', 'joinedAt', 'status'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 40
+        && data.joinedAt is number
+        && data.status == 'waiting';
+    }
+  }
+}

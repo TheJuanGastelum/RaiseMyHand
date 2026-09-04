@@ -1,0 +1,8 @@
+node_modules/
+.firebase/
+.DS_Store
+firebase-debug.log
+firestore-debug.log
+
+# Never commit this: it's your Firebase Admin SDK private key.
+private/

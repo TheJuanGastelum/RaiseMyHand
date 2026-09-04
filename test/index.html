@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>RaiseMyHand (smoke test harness)</title>
+<script type="importmap">
+{
+  "imports": {
+    "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js": "./fake-firebase/firebase-app.js",
+    "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js": "./fake-firebase/firebase-auth.js",
+    "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js": "./fake-firebase/firebase-firestore.js"
+  }
+}
+</script>
+</head>
+<body>
+<!-- The real markup/styles are loaded by fetching public/index.html's body via a tiny inline script,
+     so this harness never duplicates the actual page content by hand. -->
+<div id="mount-target"></div>
+<script>
+  fetch('../public/index.html').then(function (r) { return r.text(); }).then(function (html) {
+    var bodyMatch = html.match(/<body>([\s\S]*)<\/body>/);
+    var headStyleMatch = html.match(/<style>[\s\S]*<\/style>/);
+    document.head.insertAdjacentHTML('beforeend', headStyleMatch ? headStyleMatch[0] : '');
+    document.getElementById('mount-target').outerHTML = bodyMatch ? bodyMatch[1] : '';
+    var s = document.createElement('script');
+    s.type = 'module';
+    s.src = '../public/app.js';
+    document.body.appendChild(s);
+  });
+</script>
+</body>
+</html>
