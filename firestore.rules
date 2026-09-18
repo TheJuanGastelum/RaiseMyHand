@@ -34,10 +34,18 @@ service cloud.firestore {
     }
 
     function isValidSession(data) {
-      return data.keys().hasOnly(['code', 'className', 'createdAt'])
+      // teacherKey is a short, private "reopen key" the app pairs with the
+      // public 4-character join code so a student who only has the join
+      // code can't claim someone else's teacher board. It's a casual
+      // deterrent, not a secret -- this collection is publicly readable
+      // (see the top-level comment), so anyone querying Firestore directly
+      // could still read it. There are no accounts in this app, so that
+      // tradeoff is accepted deliberately.
+      return data.keys().hasOnly(['code', 'className', 'createdAt', 'teacherKey'])
         && data.code is string && data.code.size() <= 8
         && data.className is string && data.className.size() <= 60
-        && data.createdAt is number;
+        && data.createdAt is number
+        && data.teacherKey is string && data.teacherKey.size() == 2;
     }
 
     function isValidEntry(data) {

@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <title>RaiseMyHand (smoke test harness)</title>
+<!-- Without an explicit favicon, Chrome auto-requests /favicon.ico, which
+     404s against this static server and shows up as a spurious console
+     error in the smoke test -- this harness doesn't copy the real
+     page's data-uri favicon <link> (it only copies <style> + <body>),
+     so give it a trivial no-op one directly. -->
+<link rel="icon" href="data:,">
 <script type="importmap">
 {
   "imports": {

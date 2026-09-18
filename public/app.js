@@ -80,32 +80,67 @@ import { firebaseConfig } from "./firebase-config.js";
 
   var LS_TEACHER = 'rmh_teacher_v1';
   var LS_STUDENT = 'rmh_student_v1';
-  var LS_THEME = 'rmh_theme_v1';
+  var LS_THEME_HUE = 'rmh_theme_hue_v1';
+  var LS_THEME_MODE = 'rmh_theme_mode_v1';
+  var LS_THEME_LEGACY = 'rmh_theme_v1';
   var CODE_CHARS = '23456789ACDEFGHJKMNPQRSTUVWXYZ';
 
   // ---------- Theme ----------
-  // A handful of hand-picked, self-contained palettes (no automatic
-  // OS dark-mode switching) so each person can pick one that's actually
-  // readable for them, instead of inheriting whatever their system default
-  // happens to render as.
-  var THEMES = [
-    { id: 'ocean', label: 'Ocean (default)', swatch: '#1F4E8C' },
-    { id: 'slate', label: 'Slate', swatch: '#33383D' },
-    { id: 'forest', label: 'Forest', swatch: '#1F6B3B' },
-    { id: 'sunset', label: 'Sunset', swatch: '#B44A26' },
-    { id: 'midnight', label: 'Midnight (dark)', swatch: '#3E7CBF' }
+  // Each hue is a main-screen color paired with a text color that's
+  // guaranteed readable against it (set in CSS, keyed off
+  // data-theme="<hue>-<mode>"). Light/dark is a second, independent
+  // choice layered on top of every hue -- no automatic OS dark-mode
+  // switching, so nobody ends up stuck with a low-contrast combo their
+  // system picked for them.
+  var THEME_HUES = [
+    { id: 'ocean', label: 'Ocean', swatchLight: '#1F4E8C', swatchDark: '#3E7CBF' },
+    { id: 'slate', label: 'Slate', swatchLight: '#33383D', swatchDark: '#5A6169' },
+    { id: 'forest', label: 'Forest', swatchLight: '#1F6B3B', swatchDark: '#3F9260' },
+    { id: 'sunset', label: 'Sunset', swatchLight: '#B44A26', swatchDark: '#D9713F' },
+    { id: 'pink', label: 'Pink', swatchLight: '#C43D74', swatchDark: '#E85F97' }
   ];
+  // Old single-theme ids (pre hue/mode split) map onto a hue + mode below.
+  var LEGACY_THEME_MAP = {
+    ocean: { hue: 'ocean', mode: 'light' },
+    slate: { hue: 'slate', mode: 'light' },
+    forest: { hue: 'forest', mode: 'light' },
+    sunset: { hue: 'sunset', mode: 'light' },
+    midnight: { hue: 'ocean', mode: 'dark' }
+  };
 
-  function applyTheme(id) {
-    var valid = THEMES.some(function (t) { return t.id === id; });
-    document.documentElement.setAttribute('data-theme', valid ? id : 'ocean');
+  function currentHue() {
+    var id = loadLS(LS_THEME_HUE);
+    var valid = THEME_HUES.some(function (t) { return t.id === id; });
+    return valid ? id : 'ocean';
   }
+
+  function currentMode() {
+    var m = loadLS(LS_THEME_MODE);
+    return m === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', currentHue() + '-' + currentMode());
+  }
+
+  // One-time migration: if someone has an old rmh_theme_v1 value saved and
+  // no new-style hue/mode pair yet, carry it forward instead of quietly
+  // resetting them to the default.
+  (function migrateLegacyTheme() {
+    if (loadLS(LS_THEME_HUE)) return;
+    var legacy = loadLS(LS_THEME_LEGACY);
+    var mapped = legacy && LEGACY_THEME_MAP[legacy];
+    if (mapped) {
+      saveLS(LS_THEME_HUE, mapped.hue);
+      saveLS(LS_THEME_MODE, mapped.mode);
+    }
+  })();
 
   // loadLS/saveLS are declared further below as function declarations,
   // which are hoisted -- safe to call here even though this line runs
   // before their textual definition, so the theme applies before the
   // very first paint of any screen.
-  applyTheme(loadLS(LS_THEME));
+  applyTheme();
 
   var activeUnsubs = [];
   var tickHandle = null;
@@ -162,7 +197,9 @@ import { firebaseConfig } from "./firebase-config.js";
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
     eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
     eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2C11 5.1 11.5 5 12 5c6 0 9.5 7 9.5 7-.6 1.2-1.6 2.7-3 4.1M6.3 6.3C4 7.9 2.5 12 2.5 12s3.5 7 9.5 7c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
-    hand: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.4" y="11" width="10.4" height="9.6" rx="3"/><rect x="6.9" y="3.2" width="2.3" height="9" rx="1.15"/><rect x="9.6" y="1.6" width="2.3" height="10.6" rx="1.15"/><rect x="12.3" y="1.1" width="2.3" height="11.1" rx="1.15"/><rect x="15" y="2.1" width="2.3" height="10.1" rx="1.15"/><rect x="3.3" y="9.6" width="2.3" height="6.4" rx="1.15" transform="rotate(-24 4.45 12.8)"/></svg>'
+    hand: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.4" y="11" width="10.4" height="9.6" rx="3"/><rect x="6.9" y="3.2" width="2.3" height="9" rx="1.15"/><rect x="9.6" y="1.6" width="2.3" height="10.6" rx="1.15"/><rect x="12.3" y="1.1" width="2.3" height="11.1" rx="1.15"/><rect x="15" y="2.1" width="2.3" height="10.1" rx="1.15"/><rect x="3.3" y="9.6" width="2.3" height="6.4" rx="1.15" transform="rotate(-24 4.45 12.8)"/></svg>',
+    sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/></svg>',
+    moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 0 1 9.3 3.6a.6.6 0 0 0-.75-.8A9.4 9.4 0 1 0 21.2 15.45a.6.6 0 0 0-.8-.75Z"/></svg>'
   };
 
   function identityLabel(name, seat) {
@@ -175,33 +212,57 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   function renderThemeSwitch() {
-    var current = loadLS(LS_THEME) || 'ocean';
-    var dots = THEMES.map(function (t) {
-      return '<button data-theme-id="' + t.id + '" class="' + (t.id === current ? 'active' : '') + '" title="' + esc(t.label) + '" aria-label="' + esc(t.label) + '"></button>';
+    var hue = currentHue();
+    var mode = currentMode();
+
+    function swatchFor(t) { return mode === 'dark' ? t.swatchDark : t.swatchLight; }
+
+    var dots = THEME_HUES.map(function (t) {
+      return '<button data-theme-id="' + t.id + '" class="' + (t.id === hue ? 'active' : '') + '" title="' + esc(t.label) + '" aria-label="' + esc(t.label) + '"></button>';
     }).join('');
     var wrap = document.createElement('div');
     wrap.className = 'theme-switch';
     wrap.innerHTML =
+      '<button class="mode-btn" id="modeBtn" title="Light / dark" aria-label="Toggle light or dark"></button>' +
       '<button class="theme-btn" id="themeBtn" title="Color theme" aria-label="Color theme"></button>' +
       '<div class="theme-pop" id="themePop">' + dots + '</div>';
+
+    function paintDots() {
+      wrap.querySelectorAll('.theme-pop button').forEach(function (b) {
+        var id = b.getAttribute('data-theme-id');
+        var t = THEME_HUES.filter(function (x) { return x.id === id; })[0];
+        if (t) b.style.background = swatchFor(t);
+      });
+    }
+
+    function paintModeBtn() {
+      var modeBtn = wrap.querySelector('#modeBtn');
+      modeBtn.innerHTML = mode === 'dark' ? icons.moon : icons.sun;
+    }
+
+    paintDots();
+    paintModeBtn();
 
     wrap.querySelector('#themeBtn').addEventListener('click', function (e) {
       e.stopPropagation();
       wrap.querySelector('#themePop').classList.toggle('open');
     });
+    wrap.querySelector('#modeBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      mode = mode === 'dark' ? 'light' : 'dark';
+      saveLS(LS_THEME_MODE, mode);
+      applyTheme();
+      paintDots();
+      paintModeBtn();
+    });
     wrap.querySelectorAll('.theme-pop button').forEach(function (b) {
-      var id = b.getAttribute('data-theme-id');
-      // Render each dot in its own theme's accent (a fixed hex, not the
-      // live --swatch var) so people can tell the options apart before
-      // picking one.
-      var t = THEMES.filter(function (x) { return x.id === id; })[0];
-      if (t) b.style.background = t.swatch;
       b.addEventListener('click', function (e) {
         e.stopPropagation();
-        saveLS(LS_THEME, id);
-        applyTheme(id);
+        hue = b.getAttribute('data-theme-id');
+        saveLS(LS_THEME_HUE, hue);
+        applyTheme();
         wrap.querySelectorAll('.theme-pop button').forEach(function (btn) {
-          btn.classList.toggle('active', btn.getAttribute('data-theme-id') === id);
+          btn.classList.toggle('active', btn.getAttribute('data-theme-id') === hue);
         });
         wrap.querySelector('#themePop').classList.remove('open');
       });
@@ -285,11 +346,12 @@ import { firebaseConfig } from "./firebase-config.js";
           '<input type="text" id="className" maxlength="40" placeholder="e.g. Period 3 &ndash; ECE 175">' +
         '</div>' +
         '<button class="btn btn-primary" id="startBtn">Start session</button>' +
-        '<div class="link-row">Watching this class on another device? <button id="resumeToggle">Resume with a code</button></div>' +
+        '<div class="link-row">Reopening a session from another device? <button id="resumeToggle">Resume with a code</button></div>' +
         '<div id="resumeBox" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:16px;">' +
           '<div class="field" style="margin-bottom:10px;">' +
-            '<label for="resumeCode">Session code</label>' +
-            '<input type="text" id="resumeCode" class="code-input" maxlength="4" placeholder="CODE">' +
+            '<label for="resumeCode">Reopen code</label>' +
+            '<input type="text" id="resumeCode" class="code-input" maxlength="6" placeholder="CODE+KEY">' +
+            '<div class="hint">The 4-character class code, plus the 2-character teacher key you saw when you started the session.</div>' +
           '</div>' +
           '<button class="btn btn-ghost" id="resumeBtn">Resume session</button>' +
         '</div>' +
@@ -305,9 +367,9 @@ import { firebaseConfig } from "./firebase-config.js";
     root.querySelector('#startBtn').addEventListener('click', function () {
       var btn = this; btn.disabled = true; btn.textContent = 'Starting…';
       var className = root.querySelector('#className').value.trim();
-      startNewSession(className).then(function (code) {
-        saveLS(LS_TEACHER, { code: code, className: className });
-        renderTeacherBoard(code, className);
+      startNewSession(className).then(function (result) {
+        saveLS(LS_TEACHER, { code: result.code, className: className, teacherKey: result.teacherKey });
+        renderTeacherBoard(result.code, className, result.teacherKey);
       }).catch(function (err) {
         setErr(err && err.message ? err.message : 'Could not start a session. Please try again.');
         btn.disabled = false; btn.textContent = 'Start session';
@@ -321,8 +383,10 @@ import { firebaseConfig } from "./firebase-config.js";
 
     root.querySelector('#resumeBtn').addEventListener('click', function () {
       var btn = this;
-      var code = root.querySelector('#resumeCode').value.trim().toUpperCase();
-      if (!code) { setErr('Enter the session code to resume.'); return; }
+      var raw = root.querySelector('#resumeCode').value.trim().toUpperCase().replace(/\s+/g, '');
+      if (raw.length !== 6) { setErr('Enter your full 6-character reopen code (4-character class code + 2-character teacher key).'); return; }
+      var code = raw.slice(0, 4);
+      var key = raw.slice(4, 6);
       btn.disabled = true; btn.textContent = 'Checking…';
       sessionDoc(code).get().then(function (snap) {
         if (!snap.exists) {
@@ -331,8 +395,13 @@ import { firebaseConfig } from "./firebase-config.js";
           return;
         }
         var data = snap.data() || {};
-        saveLS(LS_TEACHER, { code: code, className: data.className || '' });
-        renderTeacherBoard(code, data.className || '');
+        if (!data.teacherKey || data.teacherKey !== key) {
+          setErr('That reopen code doesn’t match this session.');
+          btn.disabled = false; btn.textContent = 'Resume session';
+          return;
+        }
+        saveLS(LS_TEACHER, { code: code, className: data.className || '', teacherKey: key });
+        renderTeacherBoard(code, data.className || '', key);
       }).catch(function () {
         setErr('Something went wrong checking that code.');
         btn.disabled = false; btn.textContent = 'Resume session';
@@ -340,28 +409,39 @@ import { firebaseConfig } from "./firebase-config.js";
     });
 
     // Try to resume a session already open on this device.
-    if (saved && saved.code) {
+    if (saved && saved.code && saved.teacherKey) {
       sessionDoc(saved.code).get().then(function (snap) {
         if (snap.exists) {
           var data = snap.data() || {};
-          renderTeacherBoard(saved.code, data.className || saved.className || '');
+          renderTeacherBoard(saved.code, data.className || saved.className || '', saved.teacherKey);
         } else {
           clearLS(LS_TEACHER);
         }
       }).catch(function () {});
+    } else if (saved && saved.code) {
+      // Saved from before the teacher-key feature existed -- there's no
+      // key to trust, so don't auto-resume into someone else's board.
+      clearLS(LS_TEACHER);
     }
   }
 
   function startNewSession(className) {
+    // The 4-character code is the public, spoken-aloud join code -- anyone
+    // in the room is meant to have it. The 2-character teacher key is
+    // private: it never gets shown to students, and it's what lets the
+    // teacher (and only the teacher) reopen this same board from another
+    // device or tab later, instead of a student who overheard the code
+    // being able to claim the teacher board for themselves.
     function attempt(triesLeft) {
       var code = randomCode(4);
+      var teacherKey = randomCode(2);
       return sessionDoc(code).get().then(function (snap) {
         if (snap.exists) {
           if (triesLeft <= 0) throw new Error('Could not generate a free code. Try again.');
           return attempt(triesLeft - 1);
         }
-        return sessionDoc(code).set({ code: code, className: className || '', createdAt: Date.now() }).then(function () {
-          return code;
+        return sessionDoc(code).set({ code: code, className: className || '', createdAt: Date.now(), teacherKey: teacherKey }).then(function () {
+          return { code: code, teacherKey: teacherKey };
         });
       });
     }
@@ -369,13 +449,14 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   // ---------- Teacher: board ----------
-  function renderTeacherBoard(code, className) {
+  function renderTeacherBoard(code, className, teacherKey) {
     setTopbar('teacher');
     var root = mount(
       '<div class="board-header">' +
         '<div class="board-title">' +
           '<h2>' + esc(className || 'Untitled session') + '</h2>' +
           '<div class="sub" id="waitCount">Waiting for students&hellip;</div>' +
+          (teacherKey ? '<button class="reopen-toggle" id="reopenToggle">Show my reopen code</button>' : '') +
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
@@ -403,6 +484,17 @@ import { firebaseConfig } from "./firebase-config.js";
       '<div class="board-footer"><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
     );
+
+    if (teacherKey) {
+      var reopenToggle = root.querySelector('#reopenToggle');
+      var reopenShown = false;
+      reopenToggle.addEventListener('click', function () {
+        reopenShown = !reopenShown;
+        reopenToggle.innerHTML = reopenShown
+          ? 'Hide reopen code &middot; <span class="reopen-value">' + esc(code + teacherKey) + '</span>'
+          : 'Show my reopen code';
+      });
+    }
 
     root.querySelector('#copyBtn').addEventListener('click', function () {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -722,7 +814,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
       bannerEl.style.display = 'block';
       bannerEl.innerHTML =
-        '<div class="announce-banner"><div class="announce-text">' + esc(ann.text) + '</div>' +
+        '<div class="announce-banner"><div class="announce-text"><strong>Announcement:</strong> ' + esc(ann.text) + '</div>' +
         (ann.mode === 'dismissable' ? '<button class="announce-dismiss" id="annDismiss" aria-label="Dismiss">&times;</button>' : '') +
         '</div>';
       if (ann.mode === 'dismissable') {

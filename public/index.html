@@ -12,103 +12,25 @@
 <style>
   /* Explicit, hand-picked color themes -- no automatic OS dark-mode
      switching, so nobody ends up stuck with a low-contrast combo their
-     system picked for them. Each theme is self-contained and readable
-     on its own; "ocean" is the default until someone picks another. */
-  :root, :root[data-theme="ocean"]{
-    --bg: #F3F6F4;
-    --surface: #FFFFFF;
-    --surface-2: #E9EEEC;
-    --ink: #16232E;
-    --ink-soft: #52626B;
-    --ink-faint: #8A97A0;
-    --line: #D7DEDA;
-    --accent: #1F4E8C;
-    --accent-ink: #FFFFFF;
-    --accent-soft: #E3ECF7;
+     system picked for them. A theme is "<hue>-<mode>" (e.g. "ocean-dark"):
+     hue picks the main screen color and its paired, high-contrast text
+     color; mode (light/dark) is a separate choice layered on top, shared
+     across every hue via attribute-suffix selectors below. Default is
+     ocean-light until someone picks another combination.
+
+     -- Status colors + shadow/radius: shared across every hue, split only
+        by brightness. */
+  :root, :root[data-theme$="-light"]{
     --raise: #DFA636;
     --raise-ink: #2A1B04;
     --raise-soft: #FBF0D9;
     --good: #2F8F5B;
     --good-soft: #E1F3E8;
     --danger: #B3502E;
-    --shadow: 0 1px 2px rgba(20,30,38,.06), 0 8px 24px -12px rgba(20,30,38,.18);
-    --radius: 14px;
-    --swatch: #1F4E8C;
-  }
-  :root[data-theme="slate"]{
-    --bg: #F5F5F4;
-    --surface: #FFFFFF;
-    --surface-2: #E7E7E4;
-    --ink: #1C1C1B;
-    --ink-soft: #5B5B57;
-    --ink-faint: #8C8C86;
-    --line: #DAD9D4;
-    --accent: #33383D;
-    --accent-ink: #FFFFFF;
-    --accent-soft: #E4E5E6;
-    --raise: #C98A2B;
-    --raise-ink: #241804;
-    --raise-soft: #F6EAD4;
-    --good: #2E7D53;
-    --good-soft: #DEEFE4;
-    --danger: #A2432B;
     --shadow: 0 1px 2px rgba(20,20,20,.06), 0 8px 24px -12px rgba(20,20,20,.18);
     --radius: 14px;
-    --swatch: #33383D;
   }
-  :root[data-theme="forest"]{
-    --bg: #F3F6F1;
-    --surface: #FFFFFF;
-    --surface-2: #E7EEE3;
-    --ink: #1B2A1E;
-    --ink-soft: #4E5F51;
-    --ink-faint: #87958A;
-    --line: #D6E0D2;
-    --accent: #1F6B3B;
-    --accent-ink: #FFFFFF;
-    --accent-soft: #DDEEE1;
-    --raise: #C68A2E;
-    --raise-ink: #241804;
-    --raise-soft: #F5E9D3;
-    --good: #2F8F5B;
-    --good-soft: #E1F3E8;
-    --danger: #A6462B;
-    --shadow: 0 1px 2px rgba(20,30,20,.06), 0 8px 24px -12px rgba(20,30,20,.18);
-    --radius: 14px;
-    --swatch: #1F6B3B;
-  }
-  :root[data-theme="sunset"]{
-    --bg: #FBF4EE;
-    --surface: #FFFFFF;
-    --surface-2: #F3E6DA;
-    --ink: #2C1D14;
-    --ink-soft: #6B5548;
-    --ink-faint: #9C8879;
-    --line: #E7D5C6;
-    --accent: #B44A26;
-    --accent-ink: #FFFFFF;
-    --accent-soft: #F6E1D4;
-    --raise: #C98A2B;
-    --raise-ink: #241804;
-    --raise-soft: #F6EAD4;
-    --good: #2F8F5B;
-    --good-soft: #E1F3E8;
-    --danger: #8E3A20;
-    --shadow: 0 1px 2px rgba(40,20,10,.06), 0 8px 24px -12px rgba(40,20,10,.18);
-    --radius: 14px;
-    --swatch: #B44A26;
-  }
-  :root[data-theme="midnight"]{
-    --bg: #0E161D;
-    --surface: #16212A;
-    --surface-2: #1D2932;
-    --ink: #EAF0EE;
-    --ink-soft: #A6B4BB;
-    --ink-faint: #6C7A82;
-    --line: #2B3942;
-    --accent: #3E7CBF;
-    --accent-ink: #FFFFFF;
-    --accent-soft: #1E3049;
+  :root[data-theme$="-dark"]{
     --raise: #EFC066;
     --raise-ink: #2A1B04;
     --raise-soft: #33290F;
@@ -117,7 +39,70 @@
     --danger: #E08F6B;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.55);
     --radius: 14px;
+  }
+
+  /* -- Hue: the main screen color (--bg) paired with a readable text
+        color (--ink), plus a matching accent -- one pair per hue per
+        mode. */
+  :root, :root[data-theme="ocean-light"]{
+    --bg: #F3F6F4; --surface: #FFFFFF; --surface-2: #E9EEEC;
+    --ink: #16232E; --ink-soft: #52626B; --ink-faint: #8A97A0; --line: #D7DEDA;
+    --accent: #1F4E8C; --accent-ink: #FFFFFF; --accent-soft: #E3ECF7;
+    --swatch: #1F4E8C;
+  }
+  :root[data-theme="ocean-dark"]{
+    --bg: #0E161D; --surface: #16212A; --surface-2: #1D2932;
+    --ink: #EAF0EE; --ink-soft: #A6B4BB; --ink-faint: #6C7A82; --line: #2B3942;
+    --accent: #3E7CBF; --accent-ink: #FFFFFF; --accent-soft: #1E3049;
     --swatch: #3E7CBF;
+  }
+  :root[data-theme="slate-light"]{
+    --bg: #F5F5F4; --surface: #FFFFFF; --surface-2: #E7E7E4;
+    --ink: #1C1C1B; --ink-soft: #5B5B57; --ink-faint: #8C8C86; --line: #DAD9D4;
+    --accent: #33383D; --accent-ink: #FFFFFF; --accent-soft: #E4E5E6;
+    --swatch: #33383D;
+  }
+  :root[data-theme="slate-dark"]{
+    --bg: #17181A; --surface: #202225; --surface-2: #292B2F;
+    --ink: #EDEDEC; --ink-soft: #B7B8B5; --ink-faint: #7B7C79; --line: #37393D;
+    --accent: #5A6169; --accent-ink: #FFFFFF; --accent-soft: #2B2E32;
+    --swatch: #5A6169;
+  }
+  :root[data-theme="forest-light"]{
+    --bg: #F3F6F1; --surface: #FFFFFF; --surface-2: #E7EEE3;
+    --ink: #1B2A1E; --ink-soft: #4E5F51; --ink-faint: #87958A; --line: #D6E0D2;
+    --accent: #1F6B3B; --accent-ink: #FFFFFF; --accent-soft: #DDEEE1;
+    --swatch: #1F6B3B;
+  }
+  :root[data-theme="forest-dark"]{
+    --bg: #101A13; --surface: #18241B; --surface-2: #1F2D22;
+    --ink: #E7F1E9; --ink-soft: #A9BDAE; --ink-faint: #6E8175; --line: #2A3B2F;
+    --accent: #3F9260; --accent-ink: #FFFFFF; --accent-soft: #1B3324;
+    --swatch: #3F9260;
+  }
+  :root[data-theme="sunset-light"]{
+    --bg: #FBF4EE; --surface: #FFFFFF; --surface-2: #F3E6DA;
+    --ink: #2C1D14; --ink-soft: #6B5548; --ink-faint: #9C8879; --line: #E7D5C6;
+    --accent: #B44A26; --accent-ink: #FFFFFF; --accent-soft: #F6E1D4;
+    --swatch: #B44A26;
+  }
+  :root[data-theme="sunset-dark"]{
+    --bg: #1D140E; --surface: #271C14; --surface-2: #30231A;
+    --ink: #F5E9DE; --ink-soft: #C7AE9B; --ink-faint: #8C7565; --line: #3D2C21;
+    --accent: #D9713F; --accent-ink: #241004; --accent-soft: #3A2415;
+    --swatch: #D9713F;
+  }
+  :root[data-theme="pink-light"]{
+    --bg: #FBF0F5; --surface: #FFFFFF; --surface-2: #F6E3EC;
+    --ink: #3A1C2A; --ink-soft: #7A4A5E; --ink-faint: #AE8598; --line: #F0D3E0;
+    --accent: #C43D74; --accent-ink: #FFFFFF; --accent-soft: #FBE1EC;
+    --swatch: #C43D74;
+  }
+  :root[data-theme="pink-dark"]{
+    --bg: #1D0F16; --surface: #271521; --surface-2: #301A29;
+    --ink: #F7E4EE; --ink-soft: #C79BB0; --ink-faint: #8C6478; --line: #3D2434;
+    --accent: #E85F97; --accent-ink: #22040F; --accent-soft: #3A1B2D;
+    --swatch: #E85F97;
   }
 
   *{ box-sizing:border-box; }
@@ -135,7 +120,7 @@
   button{ font-family:inherit; }
   :focus-visible{ outline:2.5px solid var(--accent); outline-offset:2px; }
 
-  .shell{ height:100vh; display:flex; flex-direction:column; }
+  .shell{ height:100vh; height:100dvh; display:flex; flex-direction:column; }
   .topbar{
     flex:0 0 auto;
     display:flex; align-items:center; justify-content:space-between;
@@ -171,11 +156,17 @@
     cursor:pointer; padding:0;
   }
   .theme-pop button.active{ box-shadow:0 0 0 2px var(--accent); }
+  .mode-btn{
+    width:24px; height:24px; border-radius:50%; border:none; background:var(--surface-2); color:var(--ink-soft);
+    cursor:pointer; padding:0; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+  }
+  .mode-btn svg{ width:14px; height:14px; }
+  .mode-btn:hover{ color:var(--ink); }
 
-  .app{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:28px; }
+  .app{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:28px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .app.top-align{ align-items:flex-start; }
-  .screen{ width:100%; max-width:560px; animation:rise .35s ease both; }
-  .screen.wide{ max-width:640px; height:100%; display:flex; flex-direction:column; }
+  .screen{ width:100%; max-width:560px; animation:rise .35s ease both; margin:auto; }
+  .screen.wide{ max-width:640px; min-height:100%; display:flex; flex-direction:column; }
   @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
   @media (prefers-reduced-motion: reduce){ .screen{ animation:none; } }
 
@@ -235,6 +226,9 @@
   .board-header{ flex:0 0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding-bottom:18px; margin-bottom:18px; border-bottom:1px solid var(--line); }
   .board-title h2{ font-size:1.4rem; }
   .board-title .sub{ color:var(--ink-soft); font-size:.88rem; margin-top:2px; }
+  .reopen-toggle{ background:none; border:none; color:var(--ink-faint); font-size:.76rem; cursor:pointer; padding:2px 0; margin-top:4px; text-decoration:underline; text-underline-offset:2px; }
+  .reopen-toggle:hover{ color:var(--ink-soft); }
+  .reopen-value{ font-family:"Space Mono"; font-size:.8rem; letter-spacing:.06em; background:var(--surface-2); color:var(--ink); padding:3px 8px; border-radius:6px; margin-left:6px; }
   .code-chip{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px 8px 8px 16px; box-shadow:var(--shadow); }
   .code-chip .code-label{ font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-faint); }
   .code-chip .code-value{ font-family:"Space Mono"; font-weight:700; font-size:1.4rem; letter-spacing:.18em; color:var(--accent); }
@@ -288,8 +282,8 @@
   textarea:focus{ border-color:var(--accent); }
   select{ font-family:inherit; font-size:.85rem; padding:9px 10px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); }
   .announce-controls{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
-  .announce-controls select{ flex:1 1 180px; }
-  .announce-controls input{ padding:9px 10px; text-align:center; }
+  .announce-controls select{ flex:1 1 180px; min-width:0; }
+  .announce-controls input{ padding:9px 10px; text-align:center; min-width:0; }
   .announce-controls .btn{ flex:0 0 auto; }
 
   /* ---- Announcement (student banner) ---- */
@@ -351,6 +345,26 @@
     pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:50;
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ---- Phone / narrow-viewport tuning ---- */
+  @media (max-width: 480px){
+    /* Inputs at 16px stop iOS Safari from zooming in on focus. */
+    textarea, select, input[type=text]{ font-size:16px; }
+    .app{ padding:18px 16px; }
+    .card{ padding:20px; }
+    .announce-card{ padding:14px; }
+    .announce-controls{ flex-direction:column; align-items:stretch; }
+    .announce-controls select, .announce-controls input, .announce-controls .btn{ width:100%; }
+    .board-header{ gap:10px; }
+    .code-chip{ flex-wrap:wrap; }
+    .raise-btn{ width:190px; height:190px; }
+    .raise-btn svg{ width:44px; height:44px; }
+    .raise-btn .label{ font-size:1.1rem; }
+    .ticket .position{ font-size:3.6rem; }
+    .ticket .details{ gap:18px; }
+    .icon-btn{ width:38px; height:38px; }
+    .theme-btn, .mode-btn, .theme-pop button{ width:28px; height:28px; }
+  }
 </style>
 </head>
 <body>
