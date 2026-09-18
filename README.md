@@ -1,4 +1,4 @@
-# RaiseMyHand
+# RaiseMyHand 
 
 A live digital hand-raise queue for a classroom. Students press **Space** or
 tap a button on their own device to line up; the teacher watches one live
