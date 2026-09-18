@@ -24,6 +24,7 @@
     --raise: #DFA636;
     --raise-ink: #2A1B04;
     --raise-soft: #FBF0D9;
+    --raise-ink-soft: #2A1B04;
     --good: #2F8F5B;
     --good-soft: #E1F3E8;
     --danger: #B3502E;
@@ -34,6 +35,13 @@
     --raise: #EFC066;
     --raise-ink: #2A1B04;
     --raise-soft: #33290F;
+    /* --raise-ink is meant for text/icons sitting ON the bright --raise
+       gold itself (works in both modes, since --raise stays bright gold
+       either way). --raise-soft is a muted TINT used as a background on
+       its own -- dark in dark mode -- so anything drawn on top of
+       --raise-soft (like the "I'm a student" badge icon) needs this
+       separate, mode-aware pairing instead, or it goes dark-on-dark. */
+    --raise-ink-soft: #F5DFB8;
     --good: #56C088;
     --good-soft: #123423;
     --danger: #E08F6B;
@@ -270,14 +278,16 @@
   .board-footer .btn{ width:auto; }
 
   /* ---- Announcement (teacher composer) ---- */
-  .announce-card{ flex:0 0 auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; }
+  .announce-card{ flex:0 0 auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; transition:border-color .15s ease; }
+  .announce-card.is-live{ border-color:var(--accent); border-width:2px; }
   .announce-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
   .announce-card-head h3{ font-family:"Zilla Slab"; font-size:1rem; }
-  .announce-status{ font-size:.75rem; color:var(--ink-faint); }
-  .announce-live{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; background:var(--accent-soft); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
-  .announce-live p{ margin:0; font-size:.92rem; color:var(--ink); }
-  .announce-live .meta{ font-size:.72rem; color:var(--ink-soft); margin-top:4px; }
-  .announce-live button{ background:none; border:none; color:var(--ink-soft); font-size:.8rem; cursor:pointer; text-decoration:underline; white-space:nowrap; }
+  .announce-status{ font-size:.75rem; color:var(--ink-faint); font-weight:700; }
+  .announce-status.is-live{ color:var(--accent); text-transform:uppercase; letter-spacing:.05em; font-size:.72rem; }
+  .announce-live{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; background:var(--accent-soft); border-left:4px solid var(--accent); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .announce-live p{ margin:0; font-size:1.08rem; font-weight:600; color:var(--ink); line-height:1.35; }
+  .announce-live .meta{ font-size:.76rem; color:var(--ink-soft); margin-top:6px; }
+  .announce-live button{ background:none; border:none; color:var(--ink-soft); font-size:.82rem; cursor:pointer; text-decoration:underline; white-space:nowrap; }
   textarea{ width:100%; font-family:inherit; font-size:.92rem; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); resize:vertical; min-height:52px; }
   textarea:focus{ border-color:var(--accent); }
   select{ font-family:inherit; font-size:.85rem; padding:9px 10px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); }
@@ -287,10 +297,15 @@
   .announce-controls .btn{ flex:0 0 auto; }
 
   /* ---- Announcement (student banner) ---- */
-  .announce-banner{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:12px; padding:12px 16px; margin-bottom:16px; box-shadow:var(--shadow); }
-  .announce-banner .announce-text{ font-size:.92rem; color:var(--ink); line-height:1.4; }
-  .announce-banner .announce-dismiss{ background:none; border:none; color:var(--ink-soft); font-size:1.25rem; line-height:1; cursor:pointer; padding:0 2px; flex:0 0 auto; }
+  .announce-banner{ display:flex; align-items:flex-start; gap:12px; background:var(--accent-soft); border:2px solid var(--accent); border-radius:14px; padding:16px 18px; margin-bottom:18px; box-shadow:var(--shadow); animation:announce-pop .3s ease both; }
+  .announce-banner .announce-icon{ flex:0 0 auto; width:24px; height:24px; color:var(--accent); margin-top:1px; }
+  .announce-banner .announce-body{ flex:1 1 auto; min-width:0; }
+  .announce-banner .announce-text{ font-size:1.05rem; font-weight:600; color:var(--ink); line-height:1.4; }
+  .announce-banner .announce-text strong{ color:var(--accent); text-transform:uppercase; font-size:.82rem; letter-spacing:.04em; display:block; margin-bottom:2px; }
+  .announce-banner .announce-dismiss{ background:none; border:none; color:var(--ink-soft); font-size:1.4rem; line-height:1; cursor:pointer; padding:0 2px; flex:0 0 auto; }
   .announce-banner .announce-dismiss:hover{ color:var(--ink); }
+  @keyframes announce-pop{ from{ transform:scale(.96); opacity:0; } to{ transform:scale(1); opacity:1; } }
+  @media (prefers-reduced-motion: reduce){ .announce-banner{ animation:none; } }
 
   /* ---- Student wait ---- */
   .raise-pad{ text-align:center; }
@@ -371,13 +386,8 @@
 <div class="shell">
   <header class="topbar">
     <div class="brand">
-      <svg viewBox="0 0 24 24" fill="none">
-        <rect x="6.4" y="11" width="10.4" height="9.6" rx="3" fill="var(--accent)"/>
-        <rect x="6.9" y="3.2" width="2.3" height="9" rx="1.15" fill="var(--accent)"/>
-        <rect x="9.6" y="1.6" width="2.3" height="10.6" rx="1.15" fill="var(--accent)"/>
-        <rect x="12.3" y="1.1" width="2.3" height="11.1" rx="1.15" fill="var(--accent)"/>
-        <rect x="15" y="2.1" width="2.3" height="10.1" rx="1.15" fill="var(--accent)"/>
-        <rect x="3.3" y="9.6" width="2.3" height="6.4" rx="1.15" fill="var(--accent)" transform="rotate(-24 4.45 12.8)"/>
+      <svg viewBox="0 0 24 24" fill="var(--accent)">
+        <path d="M9.5 21.5c-.66 0-1.3-.26-1.77-.73l-4.3-4.3a1.6 1.6 0 0 1 2.26-2.26l1.81 1.81V9.2a1.5 1.5 0 0 1 3 0v3.8h.5V6.4a1.5 1.5 0 0 1 3 0v6.6h.5V7.6a1.5 1.5 0 0 1 3 0v5.4h.5V9.9a1.5 1.5 0 0 1 3 0v6.35c0 3.07-2.48 5.55-5.55 5.55H9.5z"/>
       </svg>
       <span>RaiseMyHand</span>
     </div>
