@@ -200,7 +200,8 @@ import { firebaseConfig } from "./firebase-config.js";
     hand: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 21.5c-.66 0-1.3-.26-1.77-.73l-4.3-4.3a1.6 1.6 0 0 1 2.26-2.26l1.81 1.81V9.2a1.5 1.5 0 0 1 3 0v3.8h.5V6.4a1.5 1.5 0 0 1 3 0v6.6h.5V7.6a1.5 1.5 0 0 1 3 0v5.4h.5V9.9a1.5 1.5 0 0 1 3 0v6.35c0 3.07-2.48 5.55-5.55 5.55H9.5z"/></svg>',
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 0 1 9.3 3.6a.6.6 0 0 0-.75-.8A9.4 9.4 0 1 0 21.2 15.45a.6.6 0 0 0-.8-.75Z"/></svg>',
-    megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H6l1.2 5a1 1 0 0 0 1 .8h1a1 1 0 0 0 .97-1.24L9 15h1l9 4V6l-9 4H4.5A1.5 1.5 0 0 0 3 10.5Z"/><path d="M19 9.5v6"/></svg>'
+    megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H6l1.2 5a1 1 0 0 0 1 .8h1a1 1 0 0 0 .97-1.24L9 15h1l9 4V6l-9 4H4.5A1.5 1.5 0 0 0 3 10.5Z"/><path d="M19 9.5v6"/></svg>',
+    feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 8.8h8M8 12h5"/></svg>'
   };
 
   function identityLabel(name, seat) {
@@ -275,6 +276,57 @@ import { firebaseConfig } from "./firebase-config.js";
     return wrap;
   }
 
+  function renderFeedbackButton(role) {
+    var wrap = document.createElement('div');
+    wrap.className = 'feedback-switch';
+    wrap.innerHTML =
+      '<button class="mode-btn" id="feedbackBtn" title="Suggest something" aria-label="Suggest something">' + icons.feedback + '</button>' +
+      '<div class="feedback-pop" id="feedbackPop">' +
+        '<div class="feedback-pop-head">Suggest something</div>' +
+        '<div class="feedback-pop-sub">Bugs, ideas, anything -- goes straight to the person running this app.</div>' +
+        '<textarea id="feedbackText" maxlength="500" placeholder="What would make this better?"></textarea>' +
+        '<button class="btn btn-primary" id="feedbackSendBtn">Send</button>' +
+        '<div class="feedback-thanks" id="feedbackThanks" style="display:none;">Thanks &mdash; sent.</div>' +
+      '</div>';
+
+    var pop = wrap.querySelector('#feedbackPop');
+    var textEl = wrap.querySelector('#feedbackText');
+    var sendBtn = wrap.querySelector('#feedbackSendBtn');
+    var thanksEl = wrap.querySelector('#feedbackThanks');
+
+    wrap.querySelector('#feedbackBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      pop.classList.toggle('open');
+      if (pop.classList.contains('open')) textEl.focus();
+    });
+    pop.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    sendBtn.addEventListener('click', function () {
+      var text = textEl.value.trim();
+      if (!text) { textEl.focus(); return; }
+      sendBtn.disabled = true;
+      db.collection('feedback').add({
+        text: text,
+        role: role || null,
+        createdAt: Date.now()
+      }).then(function () {
+        textEl.value = '';
+        sendBtn.disabled = false;
+        thanksEl.style.display = 'block';
+        setTimeout(function () {
+          thanksEl.style.display = 'none';
+          pop.classList.remove('open');
+        }, 1400);
+      }).catch(function () {
+        sendBtn.disabled = false;
+        showToast('Could not send that. Try again.');
+      });
+    });
+
+    document.addEventListener('click', function () { pop.classList.remove('open'); });
+    return wrap;
+  }
+
   function setTopbar(role) {
     topbarMeta.innerHTML = '';
     if (role) {
@@ -294,6 +346,7 @@ import { firebaseConfig } from "./firebase-config.js";
       topbarMeta.appendChild(exitBtn);
     }
     topbarMeta.appendChild(renderThemeSwitch());
+    topbarMeta.appendChild(renderFeedbackButton(role));
   }
 
   function mount(html, wide) {

@@ -171,6 +171,19 @@
   .mode-btn svg{ width:14px; height:14px; }
   .mode-btn:hover{ color:var(--ink); }
 
+  .feedback-switch{ position:relative; display:flex; align-items:center; }
+  .feedback-pop{
+    display:none; flex-direction:column; gap:8px; position:absolute; top:calc(100% + 8px); right:0; z-index:40;
+    width:240px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+    padding:14px;
+  }
+  .feedback-pop.open{ display:flex; }
+  .feedback-pop-head{ font-family:"Zilla Slab"; font-weight:700; font-size:.95rem; color:var(--ink); }
+  .feedback-pop-sub{ font-size:.76rem; color:var(--ink-faint); line-height:1.35; margin-top:-4px; }
+  .feedback-pop textarea{ min-height:64px; font-size:.85rem; padding:8px 10px; }
+  .feedback-pop .btn{ padding:8px; font-size:.85rem; }
+  .feedback-thanks{ font-size:.82rem; color:var(--good); font-weight:700; text-align:center; }
+
   .app{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:28px; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .app.top-align{ align-items:flex-start; }
   .screen{ width:100%; max-width:560px; animation:rise .35s ease both; margin:auto; }
@@ -379,6 +392,7 @@
     .ticket .details{ gap:18px; }
     .icon-btn{ width:38px; height:38px; }
     .theme-btn, .mode-btn, .theme-pop button{ width:28px; height:28px; }
+    .feedback-pop{ width:min(240px, calc(100vw - 32px)); }
   }
 </style>
 </head>

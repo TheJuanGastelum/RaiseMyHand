@@ -14,8 +14,18 @@ rules_version = '2';
 //   `announcement` field (the teacher's on-screen note to students).
 //   Everything else about a session (code, className, createdAt) is
 //   immutable after creation.
+// - Feedback notes are write-only from the app: anyone signed in
+//   (anonymous auth counts) can submit one, but nothing can read, edit,
+//   or delete them back through the client -- they're only visible to
+//   whoever has direct Firestore/console access to the project, so one
+//   student can't browse what other people wrote.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    match /feedback/{entryId} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null && isValidFeedback(request.resource.data);
+    }
 
     match /sessions/{code} {
       allow read: if true;
@@ -62,6 +72,13 @@ service cloud.firestore {
 
     function isValidAnnouncementUpdate(data) {
       return data.announcement == null || isValidAnnouncement(data.announcement);
+    }
+
+    function isValidFeedback(data) {
+      return data.keys().hasOnly(['text', 'role', 'createdAt'])
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 500
+        && (!('role' in data) || data.role == null || data.role in ['teacher', 'student'])
+        && data.createdAt is number;
     }
 
     function isValidAnnouncement(a) {
