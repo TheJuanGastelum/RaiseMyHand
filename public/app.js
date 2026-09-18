@@ -3,7 +3,7 @@ import {
   getAuth, signInAnonymously, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, getDocs, setDoc, deleteDoc,
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
   collection, query, orderBy, onSnapshot, addDoc
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
@@ -28,6 +28,7 @@ import { firebaseConfig } from "./firebase-config.js";
         });
       },
       set: function (data) { return setDoc(ref, data); },
+      update: function (data) { return updateDoc(ref, data); },
       delete: function () { return deleteDoc(ref); },
       onSnapshot: function (cb, errCb) {
         return onSnapshot(ref, function (snap) {
@@ -295,6 +296,22 @@ import { firebaseConfig } from "./firebase-config.js";
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
         '</div>' +
       '</div>' +
+      '<div class="announce-card" id="announceCard">' +
+        '<div class="announce-card-head"><h3>Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
+        '<div id="announceCurrent" style="display:none;"></div>' +
+        '<div class="announce-form">' +
+          '<textarea id="annText" maxlength="200" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
+          '<div class="announce-controls">' +
+            '<select id="annMode">' +
+              '<option value="dismissable">Students can dismiss it</option>' +
+              '<option value="timed">Auto-clear after a few minutes</option>' +
+              '<option value="persistent">Stays until I clear it</option>' +
+            '</select>' +
+            '<input type="text" inputmode="numeric" id="annMinutes" class="mono" value="5" style="display:none;width:64px;">' +
+            '<button class="btn btn-primary" id="annPostBtn" style="width:auto;">Post</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
       '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
       '<div class="board-footer"><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
@@ -325,6 +342,77 @@ import { firebaseConfig } from "./firebase-config.js";
         btn.disabled = false; btn.textContent = 'End session';
       });
     });
+
+    // ---- Announcement ----
+    var announceCurrentEl = root.querySelector('#announceCurrent');
+    var announceStatusEl = root.querySelector('#announceStatus');
+    var annTextEl = root.querySelector('#annText');
+    var annModeEl = root.querySelector('#annMode');
+    var annMinutesEl = root.querySelector('#annMinutes');
+    var annPostBtn = root.querySelector('#annPostBtn');
+    var lastAnn = null;
+
+    annModeEl.addEventListener('change', function () {
+      annMinutesEl.style.display = annModeEl.value === 'timed' ? 'inline-block' : 'none';
+    });
+
+    function renderAnnounceState(ann) {
+      var isLive = ann && ann.text && !(ann.mode === 'timed' && ann.expiresAt && Date.now() >= ann.expiresAt);
+      if (isLive) {
+        announceStatusEl.textContent = 'Live on student screens';
+        var modeLabel = ann.mode === 'timed'
+          ? ('auto-clears ' + new Date(ann.expiresAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+          : ann.mode === 'dismissable' ? 'students can dismiss it' : 'stays until you clear it';
+        announceCurrentEl.style.display = 'block';
+        announceCurrentEl.innerHTML =
+          '<div class="announce-live"><div><p>' + esc(ann.text) + '</p><div class="meta">' + modeLabel + '</div></div>' +
+          '<button id="annClearBtn">Clear</button></div>';
+        announceCurrentEl.querySelector('#annClearBtn').addEventListener('click', function () {
+          sessionDoc(code).update({ announcement: null }).catch(function () {
+            showToast('Could not clear the announcement.');
+          });
+        });
+      } else {
+        announceStatusEl.textContent = 'None posted';
+        announceCurrentEl.style.display = 'none';
+        announceCurrentEl.innerHTML = '';
+        if (ann && ann.mode === 'timed' && ann.expiresAt && Date.now() >= ann.expiresAt) {
+          // Opportunistically clean up an expired announcement.
+          sessionDoc(code).update({ announcement: null }).catch(function () {});
+        }
+      }
+    }
+
+    annPostBtn.addEventListener('click', function () {
+      var text = annTextEl.value.trim();
+      if (!text) { showToast('Write something to post first.'); return; }
+      var mode = annModeEl.value;
+      var ann = { text: text, mode: mode, id: Date.now(), postedAt: Date.now(), expiresAt: null };
+      if (mode === 'timed') {
+        var mins = parseInt(annMinutesEl.value, 10);
+        if (!mins || mins <= 0) mins = 5;
+        ann.expiresAt = Date.now() + mins * 60000;
+      }
+      annPostBtn.disabled = true;
+      sessionDoc(code).update({ announcement: ann }).then(function () {
+        annTextEl.value = '';
+        annPostBtn.disabled = false;
+        showToast('Announcement posted');
+      }).catch(function () {
+        annPostBtn.disabled = false;
+        showToast('Could not post the announcement.');
+      });
+    });
+
+    var annUnsub = sessionDoc(code).onSnapshot(function (snap) {
+      if (!snap.exists) return;
+      var data = snap.data() || {};
+      lastAnn = data.announcement || null;
+      renderAnnounceState(lastAnn);
+    });
+    activeUnsubs.push(annUnsub);
+    var annTick = setInterval(function () { if (lastAnn) renderAnnounceState(lastAnn); }, 15000);
+    activeUnsubs.push(function () { clearInterval(annTick); });
 
     var listEl = root.querySelector('#queueList');
     var waitCountEl = root.querySelector('#waitCount');
@@ -452,14 +540,47 @@ import { firebaseConfig } from "./firebase-config.js";
   // ---------- Student: raise-hand pad + ticket ----------
   function renderStudentWait(code, className, name) {
     setTopbar('student');
-    var root = mount('<div id="waitInner"></div>');
+    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div>');
+    var bannerEl = root.querySelector('#announceBanner');
     var inner = root.querySelector('#waitInner');
     var keyHandler = null;
     var myTicketId = null;
+    var bannerTimer = null;
 
     function teardownKeys() {
       if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
     }
+
+    function hideBanner() {
+      if (bannerTimer) { clearInterval(bannerTimer); bannerTimer = null; }
+      bannerEl.style.display = 'none';
+      bannerEl.innerHTML = '';
+    }
+
+    function updateBanner(ann) {
+      if (bannerTimer) { clearInterval(bannerTimer); bannerTimer = null; }
+      if (!ann || !ann.text) { hideBanner(); return; }
+      if (ann.mode === 'timed' && ann.expiresAt && Date.now() >= ann.expiresAt) { hideBanner(); return; }
+      if (ann.mode === 'dismissable' && loadLS('rmh_dismissed_' + code) === ann.id) { hideBanner(); return; }
+
+      bannerEl.style.display = 'block';
+      bannerEl.innerHTML =
+        '<div class="announce-banner"><div class="announce-text">' + esc(ann.text) + '</div>' +
+        (ann.mode === 'dismissable' ? '<button class="announce-dismiss" id="annDismiss" aria-label="Dismiss">&times;</button>' : '') +
+        '</div>';
+      if (ann.mode === 'dismissable') {
+        bannerEl.querySelector('#annDismiss').addEventListener('click', function () {
+          saveLS('rmh_dismissed_' + code, ann.id);
+          hideBanner();
+        });
+      }
+      if (ann.mode === 'timed' && ann.expiresAt) {
+        bannerTimer = setInterval(function () {
+          if (Date.now() >= ann.expiresAt) hideBanner();
+        }, 1000);
+      }
+    }
+    activeUnsubs.push(function () { if (bannerTimer) clearInterval(bannerTimer); });
 
     function leaveClass() {
       teardownKeys();
@@ -595,12 +716,15 @@ import { firebaseConfig } from "./firebase-config.js";
       tickHandle = setInterval(function () { tickWaitTimes(document.body); }, 1000);
     }
 
-    // Watch for the session ending entirely.
+    // Watch for the session ending entirely, and for announcement updates.
     var sessUnsub = sessionDoc(code).onSnapshot(function (snap) {
       if (!snap.exists) {
         showToast('This session has ended.');
         leaveClass();
+        return;
       }
+      var data = snap.data() || {};
+      updateBanner(data.announcement || null);
     });
     activeUnsubs.push(sessUnsub);
 

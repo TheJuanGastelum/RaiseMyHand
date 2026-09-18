@@ -76,6 +76,16 @@ export function setDoc(ref, data) {
   return Promise.resolve();
 }
 
+export function updateDoc(ref, data) {
+  var store = readStore();
+  var cur = store[ref.path] || {};
+  Object.keys(data).forEach(function (k) { cur[k] = data[k]; });
+  store[ref.path] = cur;
+  writeStore(store);
+  notifyLocal(ref.path);
+  return Promise.resolve();
+}
+
 export function deleteDoc(ref) {
   var store = readStore();
   delete store[ref.path];

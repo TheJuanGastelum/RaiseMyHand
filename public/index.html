@@ -203,6 +203,29 @@
   .board-footer{ flex:0 0 auto; padding-top:16px; margin-top:16px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; }
   .board-footer .btn{ width:auto; }
 
+  /* ---- Announcement (teacher composer) ---- */
+  .announce-card{ flex:0 0 auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; }
+  .announce-card-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .announce-card-head h3{ font-family:"Zilla Slab"; font-size:1rem; }
+  .announce-status{ font-size:.75rem; color:var(--ink-faint); }
+  .announce-live{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; background:var(--accent-soft); border-radius:10px; padding:10px 14px; margin-bottom:12px; }
+  .announce-live p{ margin:0; font-size:.92rem; color:var(--ink); }
+  .announce-live .meta{ font-size:.72rem; color:var(--ink-soft); margin-top:4px; }
+  .announce-live button{ background:none; border:none; color:var(--ink-soft); font-size:.8rem; cursor:pointer; text-decoration:underline; white-space:nowrap; }
+  textarea{ width:100%; font-family:inherit; font-size:.92rem; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); resize:vertical; min-height:52px; }
+  textarea:focus{ border-color:var(--accent); }
+  select{ font-family:inherit; font-size:.85rem; padding:9px 10px; border-radius:8px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); }
+  .announce-controls{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .announce-controls select{ flex:1 1 180px; }
+  .announce-controls input{ padding:9px 10px; text-align:center; }
+  .announce-controls .btn{ flex:0 0 auto; }
+
+  /* ---- Announcement (student banner) ---- */
+  .announce-banner{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; background:var(--accent-soft); border:1px solid var(--accent); border-radius:12px; padding:12px 16px; margin-bottom:16px; box-shadow:var(--shadow); }
+  .announce-banner .announce-text{ font-size:.92rem; color:var(--ink); line-height:1.4; }
+  .announce-banner .announce-dismiss{ background:none; border:none; color:var(--ink-soft); font-size:1.25rem; line-height:1; cursor:pointer; padding:0 2px; flex:0 0 auto; }
+  .announce-banner .announce-dismiss:hover{ color:var(--ink); }
+
   /* ---- Student wait ---- */
   .raise-pad{ text-align:center; }
   .raise-pad .meta{ margin-bottom:26px; color:var(--ink-soft); font-size:.92rem; }
