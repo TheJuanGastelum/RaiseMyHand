@@ -24,7 +24,6 @@
     --raise: #DFA636;
     --raise-ink: #2A1B04;
     --raise-soft: #FBF0D9;
-    --raise-ink-soft: #2A1B04;
     --good: #2F8F5B;
     --good-soft: #E1F3E8;
     --danger: #B3502E;
@@ -35,13 +34,6 @@
     --raise: #EFC066;
     --raise-ink: #2A1B04;
     --raise-soft: #33290F;
-    /* --raise-ink is meant for text/icons sitting ON the bright --raise
-       gold itself (works in both modes, since --raise stays bright gold
-       either way). --raise-soft is a muted TINT used as a background on
-       its own -- dark in dark mode -- so anything drawn on top of
-       --raise-soft (like the "I'm a student" badge icon) needs this
-       separate, mode-aware pairing instead, or it goes dark-on-dark. */
-    --raise-ink-soft: #F5DFB8;
     --good: #56C088;
     --good-soft: #123423;
     --danger: #E08F6B;
@@ -51,65 +43,72 @@
 
   /* -- Hue: the main screen color (--bg) paired with a readable text
         color (--ink), plus a matching accent -- one pair per hue per
-        mode. */
+        mode. --accent-icon is a separate, lightened copy of --accent
+        used only for small icon strokes drawn on an --accent-soft
+        badge background (see .role-card .icon-badge): in dark mode,
+        --accent itself is too close in luminance to --accent-soft for
+        a couple of hues (ocean/forest dip under 3:1), so --accent-icon
+        is mixed toward white until every hue clears 4:1 there. Light
+        mode's --accent already contrasts fine against --accent-soft,
+        so --accent-icon just equals --accent there. */
   :root, :root[data-theme="ocean-light"]{
     --bg: #CBE0F5; --surface: #FFFFFF; --surface-2: #B3CFEE;
     --ink: #081119; --ink-soft: #1F374B; --ink-faint: #4C6B84; --line: #96BADD;
-    --accent: #1F4E8C; --accent-ink: #FFFFFF; --accent-soft: #DCEAFB;
+    --accent: #1F4E8C; --accent-ink: #FFFFFF; --accent-soft: #DCEAFB; --accent-icon: #1F4E8C;
     --swatch: #1F4E8C;
   }
   :root[data-theme="ocean-dark"]{
     --bg: #0E1D2E; --surface: #16283C; --surface-2: #1E3450;
     --ink: #F5FAF8; --ink-soft: #C3D2D8; --ink-faint: #7C8B93; --line: #2C4763;
-    --accent: #2864A8; --accent-ink: #FFFFFF; --accent-soft: #1E3049;
+    --accent: #2864A8; --accent-ink: #FFFFFF; --accent-soft: #1E3049; --accent-icon: #6992C2;
     --swatch: #2864A8;
   }
   :root[data-theme="slate-light"]{
     --bg: #DADAD6; --surface: #FFFFFF; --surface-2: #C6C6C0;
     --ink: #0A0A09; --ink-soft: #34342F; --ink-faint: #63635B; --line: #ABABA4;
-    --accent: #33383D; --accent-ink: #FFFFFF; --accent-soft: #D6D7D4;
+    --accent: #33383D; --accent-ink: #FFFFFF; --accent-soft: #D6D7D4; --accent-icon: #33383D;
     --swatch: #33383D;
   }
   :root[data-theme="slate-dark"]{
     --bg: #1B1C1E; --surface: #232427; --surface-2: #2E3034;
     --ink: #F7F7F6; --ink-soft: #D0D1CE; --ink-faint: #8B8C88; --line: #3D3F44;
-    --accent: #7A828B; --accent-ink: #101112; --accent-soft: #2B2E32;
+    --accent: #7A828B; --accent-ink: #101112; --accent-soft: #2B2E32; --accent-icon: #A2A8AE;
     --swatch: #7A828B;
   }
   :root[data-theme="forest-light"]{
     --bg: #CCE6C6; --surface: #FFFFFF; --surface-2: #B2D9A8;
     --ink: #0A1908; --ink-soft: #24391F; --ink-faint: #517048; --line: #93C287;
-    --accent: #1F6B3B; --accent-ink: #FFFFFF; --accent-soft: #D3EACB;
+    --accent: #1F6B3B; --accent-ink: #FFFFFF; --accent-soft: #D3EACB; --accent-icon: #1F6B3B;
     --swatch: #1F6B3B;
   }
   :root[data-theme="forest-dark"]{
     --bg: #0E1F13; --surface: #17281B; --surface-2: #1F3826;
     --ink: #F3FAF4; --ink-soft: #C7DAC9; --ink-faint: #82988A; --line: #2C4A34;
-    --accent: #2A7045; --accent-ink: #FFFFFF; --accent-soft: #1B3324;
+    --accent: #2A7045; --accent-ink: #FFFFFF; --accent-soft: #1B3324; --accent-icon: #6A9B7D;
     --swatch: #2A7045;
   }
   :root[data-theme="sunset-light"]{
     --bg: #F3D7C0; --surface: #FFFFFF; --surface-2: #EBC1A0;
     --ink: #1D1108; --ink-soft: #4A2C18; --ink-faint: #7A5638; --line: #DDA97F;
-    --accent: #B44A26; --accent-ink: #FFFFFF; --accent-soft: #F1D9C4;
+    --accent: #B44A26; --accent-ink: #FFFFFF; --accent-soft: #F1D9C4; --accent-icon: #B44A26;
     --swatch: #B44A26;
   }
   :root[data-theme="sunset-dark"]{
     --bg: #1D140E; --surface: #271C14; --surface-2: #34261A;
     --ink: #FBF2EA; --ink-soft: #E3CDBC; --ink-faint: #A28A74; --line: #43301F;
-    --accent: #E08549; --accent-ink: #241004; --accent-soft: #3A2415;
+    --accent: #E08549; --accent-ink: #241004; --accent-soft: #3A2415; --accent-icon: #E9AA80;
     --swatch: #E08549;
   }
   :root[data-theme="pink-light"]{
     --bg: #F7C4DE; --surface: #FFFFFF; --surface-2: #F0A8CC;
     --ink: #220915; --ink-soft: #4A1F34; --ink-faint: #7D4C68; --line: #E68FBE;
-    --accent: #D42574; --accent-ink: #FFFFFF; --accent-soft: #FBDCEC;
+    --accent: #D42574; --accent-ink: #FFFFFF; --accent-soft: #FBDCEC; --accent-icon: #D42574;
     --swatch: #D42574;
   }
   :root[data-theme="pink-dark"]{
     --bg: #240A17; --surface: #301020; --surface-2: #3D1729;
     --ink: #FDF0F6; --ink-soft: #E3B9CC; --ink-faint: #9E7E8E; --line: #4A2038;
-    --accent: #FF5CAE; --accent-ink: #22020F; --accent-soft: #401A2E;
+    --accent: #FF5CAE; --accent-ink: #22020F; --accent-soft: #401A2E; --accent-icon: #FF8DC6;
     --swatch: #FF5CAE;
   }
 
@@ -201,11 +200,10 @@
     background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
     padding:22px 20px; text-align:left; cursor:pointer; box-shadow:var(--shadow);
     display:flex; flex-direction:column; gap:10px; transition:transform .15s ease, border-color .15s ease;
+    color:var(--ink);
   }
   .role-card:hover{ transform:translateY(-2px); border-color:var(--accent); }
-  .role-card .icon-badge{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
-  .role-card.teacher .icon-badge{ background:var(--accent-soft); }
-  .role-card.student .icon-badge{ background:var(--raise-soft); }
+  .role-card .icon-badge{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:var(--accent-soft); }
   .role-card .icon-badge svg{ width:20px; height:20px; }
   .role-card h2{ font-size:1.15rem; }
   .role-card p{ margin:0; color:var(--ink-soft); font-size:.9rem; line-height:1.45; }
