@@ -874,6 +874,12 @@ import { firebaseConfig } from "./firebase-config.js";
       var raising = false;
       function doRaise() {
         if (raising) return;
+        if (myTicketId) {
+          // We already believe we have an active ticket -- don't create a
+          // second one; just show it again instead of raising a duplicate.
+          renderTicketed();
+          return;
+        }
         raising = true;
         var btn = document.getElementById('raiseBtn');
         if (btn) btn.disabled = true;
@@ -968,6 +974,8 @@ import { firebaseConfig } from "./firebase-config.js";
         });
       });
 
+      var confirmingRemoval = false;
+
       var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
         var idx = -1;
         var mine = null;
@@ -975,8 +983,28 @@ import { firebaseConfig } from "./firebase-config.js";
           if (doc.id === myTicketId) { idx = i; mine = doc; }
         });
         if (idx === -1) {
-          // We were removed (helped) or the doc no longer exists.
-          renderCalled();
+          // Our ticket isn't in this snapshot -- normally because the
+          // teacher marked us helped and deleted it. But a brand-new
+          // collection query like this one can occasionally deliver its
+          // first snapshot before it's fully caught up with a write we
+          // just made a moment ago (raising a hand), which would
+          // otherwise show the "called" screen and clear our ticket ID
+          // while the ticket is actually still sitting in the queue --
+          // and raising again would then add a second, duplicate entry.
+          // Confirm directly against our own ticket doc before acting on
+          // that, instead of trusting this query alone.
+          if (!confirmingRemoval) {
+            confirmingRemoval = true;
+            var checkingId = myTicketId;
+            queueCol(code).doc(checkingId).get().then(function (docSnap) {
+              confirmingRemoval = false;
+              if (!docSnap.exists && myTicketId === checkingId) {
+                renderCalled();
+              }
+              // else: false alarm -- our ticket is still there; the next
+              // snapshot from this listener will pick it back up.
+            }).catch(function () { confirmingRemoval = false; });
+          }
           return;
         }
         var card = document.getElementById('ticketCard');
