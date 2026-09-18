@@ -10,7 +10,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root{
+  /* Explicit, hand-picked color themes -- no automatic OS dark-mode
+     switching, so nobody ends up stuck with a low-contrast combo their
+     system picked for them. Each theme is self-contained and readable
+     on its own; "ocean" is the default until someone picks another. */
+  :root, :root[data-theme="ocean"]{
     --bg: #F3F6F4;
     --surface: #FFFFFF;
     --surface-2: #E9EEEC;
@@ -18,7 +22,7 @@
     --ink-soft: #52626B;
     --ink-faint: #8A97A0;
     --line: #D7DEDA;
-    --accent: #24518C;
+    --accent: #1F4E8C;
     --accent-ink: #FFFFFF;
     --accent-soft: #E3ECF7;
     --raise: #DFA636;
@@ -29,29 +33,72 @@
     --danger: #B3502E;
     --shadow: 0 1px 2px rgba(20,30,38,.06), 0 8px 24px -12px rgba(20,30,38,.18);
     --radius: 14px;
+    --swatch: #1F4E8C;
   }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg: #0E161D;
-      --surface: #16212A;
-      --surface-2: #1D2932;
-      --ink: #EAF0EE;
-      --ink-soft: #A6B4BB;
-      --ink-faint: #6C7A82;
-      --line: #2B3942;
-      --accent: #6FA3D8;
-      --accent-ink: #0E1720;
-      --accent-soft: #1E3049;
-      --raise: #EFC066;
-      --raise-ink: #2A1B04;
-      --raise-soft: #33290F;
-      --good: #56C088;
-      --good-soft: #123423;
-      --danger: #E08F6B;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.55);
-    }
+  :root[data-theme="slate"]{
+    --bg: #F5F5F4;
+    --surface: #FFFFFF;
+    --surface-2: #E7E7E4;
+    --ink: #1C1C1B;
+    --ink-soft: #5B5B57;
+    --ink-faint: #8C8C86;
+    --line: #DAD9D4;
+    --accent: #33383D;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E4E5E6;
+    --raise: #C98A2B;
+    --raise-ink: #241804;
+    --raise-soft: #F6EAD4;
+    --good: #2E7D53;
+    --good-soft: #DEEFE4;
+    --danger: #A2432B;
+    --shadow: 0 1px 2px rgba(20,20,20,.06), 0 8px 24px -12px rgba(20,20,20,.18);
+    --radius: 14px;
+    --swatch: #33383D;
   }
-  :root[data-theme="dark"]{
+  :root[data-theme="forest"]{
+    --bg: #F3F6F1;
+    --surface: #FFFFFF;
+    --surface-2: #E7EEE3;
+    --ink: #1B2A1E;
+    --ink-soft: #4E5F51;
+    --ink-faint: #87958A;
+    --line: #D6E0D2;
+    --accent: #1F6B3B;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #DDEEE1;
+    --raise: #C68A2E;
+    --raise-ink: #241804;
+    --raise-soft: #F5E9D3;
+    --good: #2F8F5B;
+    --good-soft: #E1F3E8;
+    --danger: #A6462B;
+    --shadow: 0 1px 2px rgba(20,30,20,.06), 0 8px 24px -12px rgba(20,30,20,.18);
+    --radius: 14px;
+    --swatch: #1F6B3B;
+  }
+  :root[data-theme="sunset"]{
+    --bg: #FBF4EE;
+    --surface: #FFFFFF;
+    --surface-2: #F3E6DA;
+    --ink: #2C1D14;
+    --ink-soft: #6B5548;
+    --ink-faint: #9C8879;
+    --line: #E7D5C6;
+    --accent: #B44A26;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #F6E1D4;
+    --raise: #C98A2B;
+    --raise-ink: #241804;
+    --raise-soft: #F6EAD4;
+    --good: #2F8F5B;
+    --good-soft: #E1F3E8;
+    --danger: #8E3A20;
+    --shadow: 0 1px 2px rgba(40,20,10,.06), 0 8px 24px -12px rgba(40,20,10,.18);
+    --radius: 14px;
+    --swatch: #B44A26;
+  }
+  :root[data-theme="midnight"]{
     --bg: #0E161D;
     --surface: #16212A;
     --surface-2: #1D2932;
@@ -59,8 +106,8 @@
     --ink-soft: #A6B4BB;
     --ink-faint: #6C7A82;
     --line: #2B3942;
-    --accent: #6FA3D8;
-    --accent-ink: #0E1720;
+    --accent: #3E7CBF;
+    --accent-ink: #FFFFFF;
     --accent-soft: #1E3049;
     --raise: #EFC066;
     --raise-ink: #2A1B04;
@@ -69,6 +116,8 @@
     --good-soft: #123423;
     --danger: #E08F6B;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px -12px rgba(0,0,0,.55);
+    --radius: 14px;
+    --swatch: #3E7CBF;
   }
 
   *{ box-sizing:border-box; }
@@ -103,6 +152,25 @@
   }
   .exit-link{ background:none; border:none; color:var(--ink-soft); font-size:.85rem; cursor:pointer; padding:4px 6px; border-radius:6px; text-decoration:underline; text-underline-offset:2px; }
   .exit-link:hover{ color:var(--ink); }
+
+  /* ---- Theme switcher ---- */
+  .theme-switch{ position:relative; display:flex; align-items:center; }
+  .theme-btn{
+    width:24px; height:24px; border-radius:50%; border:2px solid var(--surface); box-shadow:0 0 0 1px var(--line);
+    background:var(--swatch); cursor:pointer; padding:0; flex:0 0 auto;
+  }
+  .theme-btn:hover{ box-shadow:0 0 0 1px var(--ink-faint); }
+  .theme-pop{
+    display:none; position:absolute; top:calc(100% + 8px); right:0; z-index:40;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow);
+    padding:10px; gap:8px;
+  }
+  .theme-pop.open{ display:flex; }
+  .theme-pop button{
+    width:24px; height:24px; border-radius:50%; border:2px solid var(--surface); box-shadow:0 0 0 1px var(--line);
+    cursor:pointer; padding:0;
+  }
+  .theme-pop button.active{ box-shadow:0 0 0 2px var(--accent); }
 
   .app{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:28px; }
   .app.top-align{ align-items:flex-start; }
@@ -196,6 +264,7 @@
   .stub .who{ flex:1; min-width:0; }
   .stub .who .name{ font-weight:700; font-size:1.02rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .stub .who .wait{ font-size:.8rem; color:var(--ink-soft); margin-top:2px; }
+  .stub .who .note{ font-size:.78rem; color:var(--ink-soft); margin-top:3px; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .stub .next-badge{ font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--raise-ink); background:var(--raise); padding:3px 8px; border-radius:999px; margin-right:2px; }
   .stub .help-btn{ background:var(--good-soft); color:var(--good); border:none; border-radius:8px; padding:9px 14px; font-weight:700; font-size:.85rem; cursor:pointer; white-space:nowrap; flex:0 0 auto; }
   .stub .help-btn:hover{ filter:brightness(.95); }
@@ -243,6 +312,17 @@
   .raise-btn .label{ font-family:"Zilla Slab"; font-weight:700; font-size:1.25rem; }
   .kbd-hint{ margin-top:22px; color:var(--ink-faint); font-size:.85rem; }
   kbd{ font-family:"Space Mono"; background:var(--surface-2); border:1px solid var(--line); border-bottom-width:2px; border-radius:5px; padding:2px 8px; font-size:.82rem; }
+
+  /* ---- Student note-to-self ---- */
+  .note-toggle{ background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; padding:4px 2px; font-size:.85rem; text-decoration:underline; text-underline-offset:2px; margin-top:22px; }
+  .note-box{ margin-top:12px; text-align:left; }
+  .note-box textarea{ min-height:64px; }
+  .note-share{ display:flex; align-items:center; gap:7px; margin-top:8px; font-size:.8rem; color:var(--ink-soft); font-weight:500; text-transform:none; letter-spacing:normal; cursor:pointer; }
+  .note-share input{ width:15px; height:15px; margin:0; }
+  .ticket-note{ margin-top:20px; text-align:left; background:var(--surface-2); border-radius:10px; padding:12px 14px; }
+  .ticket-note .k{ font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-faint); margin-bottom:4px; }
+  .ticket-note .v-note{ font-size:.88rem; color:var(--ink); line-height:1.4; white-space:pre-wrap; }
+  .note-shared-tag{ display:inline-block; margin-top:6px; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); }
 
   .ticket{
     background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow);

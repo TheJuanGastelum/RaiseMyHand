@@ -80,7 +80,32 @@ import { firebaseConfig } from "./firebase-config.js";
 
   var LS_TEACHER = 'rmh_teacher_v1';
   var LS_STUDENT = 'rmh_student_v1';
+  var LS_THEME = 'rmh_theme_v1';
   var CODE_CHARS = '23456789ACDEFGHJKMNPQRSTUVWXYZ';
+
+  // ---------- Theme ----------
+  // A handful of hand-picked, self-contained palettes (no automatic
+  // OS dark-mode switching) so each person can pick one that's actually
+  // readable for them, instead of inheriting whatever their system default
+  // happens to render as.
+  var THEMES = [
+    { id: 'ocean', label: 'Ocean (default)', swatch: '#1F4E8C' },
+    { id: 'slate', label: 'Slate', swatch: '#33383D' },
+    { id: 'forest', label: 'Forest', swatch: '#1F6B3B' },
+    { id: 'sunset', label: 'Sunset', swatch: '#B44A26' },
+    { id: 'midnight', label: 'Midnight (dark)', swatch: '#3E7CBF' }
+  ];
+
+  function applyTheme(id) {
+    var valid = THEMES.some(function (t) { return t.id === id; });
+    document.documentElement.setAttribute('data-theme', valid ? id : 'ocean');
+  }
+
+  // loadLS/saveLS are declared further below as function declarations,
+  // which are hoisted -- safe to call here even though this line runs
+  // before their textual definition, so the theme applies before the
+  // very first paint of any screen.
+  applyTheme(loadLS(LS_THEME));
 
   var activeUnsubs = [];
   var tickHandle = null;
@@ -138,14 +163,73 @@ import { firebaseConfig } from "./firebase-config.js";
     hand: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.4" y="11" width="10.4" height="9.6" rx="3"/><rect x="6.9" y="3.2" width="2.3" height="9" rx="1.15"/><rect x="9.6" y="1.6" width="2.3" height="10.6" rx="1.15"/><rect x="12.3" y="1.1" width="2.3" height="11.1" rx="1.15"/><rect x="15" y="2.1" width="2.3" height="10.1" rx="1.15"/><rect x="3.3" y="9.6" width="2.3" height="6.4" rx="1.15" transform="rotate(-24 4.45 12.8)"/></svg>'
   };
 
-  function setTopbar(role) {
-    if (!role) { topbarMeta.innerHTML = ''; return; }
-    var label = role === 'teacher' ? 'Teacher' : 'Student';
-    topbarMeta.innerHTML = '<span class="role-pill">' + label + '</span><button class="exit-link" id="exitBtn">Switch role</button>';
-    document.getElementById('exitBtn').addEventListener('click', function () {
-      clearSubs();
-      renderLanding();
+  function identityLabel(name, seat) {
+    var n = (name || '').trim();
+    var s = (seat || '').trim();
+    if (n && s) return n + ' · Seat ' + s;
+    if (n) return n;
+    if (s) return 'Seat ' + s;
+    return 'Student';
+  }
+
+  function renderThemeSwitch() {
+    var current = loadLS(LS_THEME) || 'ocean';
+    var dots = THEMES.map(function (t) {
+      return '<button data-theme-id="' + t.id + '" class="' + (t.id === current ? 'active' : '') + '" title="' + esc(t.label) + '" aria-label="' + esc(t.label) + '"></button>';
+    }).join('');
+    var wrap = document.createElement('div');
+    wrap.className = 'theme-switch';
+    wrap.innerHTML =
+      '<button class="theme-btn" id="themeBtn" title="Color theme" aria-label="Color theme"></button>' +
+      '<div class="theme-pop" id="themePop">' + dots + '</div>';
+
+    wrap.querySelector('#themeBtn').addEventListener('click', function (e) {
+      e.stopPropagation();
+      wrap.querySelector('#themePop').classList.toggle('open');
     });
+    wrap.querySelectorAll('.theme-pop button').forEach(function (b) {
+      var id = b.getAttribute('data-theme-id');
+      // Render each dot in its own theme's accent (a fixed hex, not the
+      // live --swatch var) so people can tell the options apart before
+      // picking one.
+      var t = THEMES.filter(function (x) { return x.id === id; })[0];
+      if (t) b.style.background = t.swatch;
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        saveLS(LS_THEME, id);
+        applyTheme(id);
+        wrap.querySelectorAll('.theme-pop button').forEach(function (btn) {
+          btn.classList.toggle('active', btn.getAttribute('data-theme-id') === id);
+        });
+        wrap.querySelector('#themePop').classList.remove('open');
+      });
+    });
+    document.addEventListener('click', function () {
+      var pop = wrap.querySelector('#themePop');
+      if (pop) pop.classList.remove('open');
+    });
+    return wrap;
+  }
+
+  function setTopbar(role) {
+    topbarMeta.innerHTML = '';
+    if (role) {
+      var label = role === 'teacher' ? 'Teacher' : 'Student';
+      var span = document.createElement('span');
+      span.className = 'role-pill';
+      span.textContent = label;
+      var exitBtn = document.createElement('button');
+      exitBtn.className = 'exit-link';
+      exitBtn.id = 'exitBtn';
+      exitBtn.textContent = 'Switch role';
+      exitBtn.addEventListener('click', function () {
+        clearSubs();
+        renderLanding();
+      });
+      topbarMeta.appendChild(span);
+      topbarMeta.appendChild(exitBtn);
+    }
+    topbarMeta.appendChild(renderThemeSwitch());
   }
 
   function mount(html, wide) {
@@ -430,7 +514,10 @@ import { firebaseConfig } from "./firebase-config.js";
         var isNext = i === 0;
         html += '<div class="stub' + (isNext ? ' next' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
-          '<div class="who"><div class="name">' + esc(d.name || 'Student') + '</div><div class="wait mono">waiting <span class="wait-time">0:00</span></div></div>' +
+          '<div class="who"><div class="name">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
+            '<div class="wait mono">waiting <span class="wait-time">0:00</span></div>' +
+            (d.note ? '<div class="note">' + esc(d.note) + '</div>' : '') +
+          '</div>' +
           (isNext ? '<span class="next-badge">Next</span>' : '') +
           '<button class="help-btn" data-id="' + esc(doc.id) + '">Mark helped</button>' +
         '</div>';
@@ -491,15 +578,20 @@ import { firebaseConfig } from "./firebase-config.js";
           '<input type="text" id="joinCode" class="code-input" maxlength="4" placeholder="CODE">' +
         '</div>' +
         '<div class="field">' +
-          '<label for="joinName">Name or seat number</label>' +
-          '<input type="text" id="joinName" maxlength="30" placeholder="e.g. Jordan, or Seat 14">' +
-          '<div class="hint">This is what your teacher will see in the queue.</div>' +
+          '<label for="joinName">Name <span style="text-transform:none;font-weight:500;">(optional)</span></label>' +
+          '<input type="text" id="joinName" maxlength="30" placeholder="e.g. Jordan">' +
+        '</div>' +
+        '<div class="field">' +
+          '<label for="joinSeat">Seat number <span style="text-transform:none;font-weight:500;">(optional)</span></label>' +
+          '<input type="text" id="joinSeat" maxlength="12" placeholder="e.g. 14">' +
+          '<div class="hint">Fill in one or both &mdash; whatever your teacher will recognize you by.</div>' +
         '</div>' +
         '<button class="btn btn-raise" id="joinBtn">Join class</button>' +
       '</div>'
     );
 
     if (saved && saved.name) root.querySelector('#joinName').value = saved.name;
+    if (saved && saved.seat) root.querySelector('#joinSeat').value = saved.seat;
     if (saved && saved.code) root.querySelector('#joinCode').value = saved.code;
 
     function setErr(msg) {
@@ -511,8 +603,9 @@ import { firebaseConfig } from "./firebase-config.js";
     function doJoin() {
       var code = root.querySelector('#joinCode').value.trim().toUpperCase();
       var name = root.querySelector('#joinName').value.trim();
+      var seat = root.querySelector('#joinSeat').value.trim();
       if (!code) { setErr('Enter the class code your teacher gave you.'); return; }
-      if (!name) { setErr('Let your teacher know who you are.'); return; }
+      if (!name && !seat) { setErr('Enter a name, a seat number, or both so your teacher can recognize you.'); return; }
       var btn = root.querySelector('#joinBtn');
       btn.disabled = true; btn.textContent = 'Checking code…';
       sessionDoc(code).get().then(function (snap) {
@@ -522,8 +615,8 @@ import { firebaseConfig } from "./firebase-config.js";
           return;
         }
         var data = snap.data() || {};
-        saveLS(LS_STUDENT, { code: code, className: data.className || '', name: name, ticketId: null });
-        renderStudentWait(code, data.className || '', name);
+        saveLS(LS_STUDENT, { code: code, className: data.className || '', name: name, seat: seat, ticketId: null });
+        renderStudentWait(code, data.className || '', name, seat);
       }).catch(function () {
         setErr('Something went wrong reaching that class. Try again.');
         btn.disabled = false; btn.textContent = 'Join class';
@@ -538,7 +631,7 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   // ---------- Student: raise-hand pad + ticket ----------
-  function renderStudentWait(code, className, name) {
+  function renderStudentWait(code, className, name, seat) {
     setTopbar('student');
     var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div>');
     var bannerEl = root.querySelector('#announceBanner');
@@ -546,6 +639,13 @@ import { firebaseConfig } from "./firebase-config.js";
     var keyHandler = null;
     var myTicketId = null;
     var bannerTimer = null;
+
+    // A private reminder the student can jot for themselves ("what was I
+    // going to ask?"). Only sent to Firestore -- and so only ever visible
+    // to the teacher -- if they explicitly check "share with teacher".
+    var noteDraft = loadLS('rmh_note_' + code) || {};
+    var noteText = noteDraft.text || '';
+    var noteShare = !!noteDraft.share;
 
     function teardownKeys() {
       if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
@@ -597,8 +697,30 @@ import { firebaseConfig } from "./firebase-config.js";
             (waitingCount ? ' &middot; ' + waitingCount + ' waiting' : '') + '</div>' +
           '<button class="raise-btn" id="raiseBtn">' + icons.hand + '<span class="label">Raise hand</span></button>' +
           '<div class="kbd-hint">or press <kbd>Space</kbd></div>' +
+          '<button class="note-toggle" id="noteToggle">' + (noteText ? 'Edit your note' : '+ Add a note to yourself') + '</button>' +
+          '<div class="note-box" id="noteBox" style="display:' + (noteText ? 'block' : 'none') + ';">' +
+            '<textarea id="noteInput" maxlength="200" placeholder="What did you want to ask or remember?">' + esc(noteText) + '</textarea>' +
+            '<label class="note-share"><input type="checkbox" id="noteShare"' + (noteShare ? ' checked' : '') + '> Let my teacher see this note too</label>' +
+          '</div>' +
           '<div class="link-row" style="margin-top:28px;"><button id="leaveBtn">Not your class? Switch</button></div>' +
         '</div>';
+
+      var noteToggleBtn = document.getElementById('noteToggle');
+      var noteBox = document.getElementById('noteBox');
+      var noteInput = document.getElementById('noteInput');
+      var noteShareBox = document.getElementById('noteShare');
+
+      noteToggleBtn.addEventListener('click', function () {
+        noteBox.style.display = noteBox.style.display === 'none' ? 'block' : 'none';
+        if (noteBox.style.display === 'block') noteInput.focus();
+      });
+      function persistNoteDraft() {
+        noteText = noteInput.value;
+        noteShare = noteShareBox.checked;
+        saveLS('rmh_note_' + code, { text: noteText, share: noteShare });
+      }
+      noteInput.addEventListener('input', persistNoteDraft);
+      noteShareBox.addEventListener('change', persistNoteDraft);
 
       var raising = false;
       function doRaise() {
@@ -606,10 +728,14 @@ import { firebaseConfig } from "./firebase-config.js";
         raising = true;
         var btn = document.getElementById('raiseBtn');
         if (btn) btn.disabled = true;
-        queueCol(code).add({ name: name, joinedAt: Date.now(), status: 'waiting' }).then(function (ref) {
+        var entry = { joinedAt: Date.now(), status: 'waiting' };
+        if (name && name.trim()) entry.name = name.trim();
+        if (seat && seat.trim()) entry.seat = seat.trim();
+        if (noteShare && noteText && noteText.trim()) entry.note = noteText.trim();
+        queueCol(code).add(entry).then(function (ref) {
           myTicketId = ref.id;
           var saved = loadLS(LS_STUDENT) || {};
-          saved.ticketId = ref.id; saved.code = code; saved.name = name; saved.className = className;
+          saved.ticketId = ref.id; saved.code = code; saved.name = name; saved.seat = seat; saved.className = className;
           saveLS(LS_STUDENT, saved);
           renderTicketed();
         }).catch(function () {
@@ -670,8 +796,12 @@ import { firebaseConfig } from "./firebase-config.js";
           '<div class="of" id="ofValue">Getting your spot in line&hellip;</div>' +
           '<div class="details">' +
             '<div class="detail"><div class="k">Waiting</div><div class="v mono wait-value">0:00</div></div>' +
-            '<div class="detail"><div class="k">You&rsquo;re listed as</div><div class="v">' + esc(name) + '</div></div>' +
+            '<div class="detail"><div class="k">You&rsquo;re listed as</div><div class="v">' + esc(identityLabel(name, seat)) + '</div></div>' +
           '</div>' +
+          (noteText ? (
+            '<div class="ticket-note"><div class="k">Your note</div><div class="v-note">' + esc(noteText) + '</div>' +
+            (noteShare ? '<span class="note-shared-tag">Shared with your teacher</span>' : '') + '</div>'
+          ) : '') +
           '<button class="btn btn-ghost lower-btn" id="lowerBtn">Lower hand</button>' +
         '</div>';
 
