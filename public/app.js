@@ -160,6 +160,8 @@ import { firebaseConfig } from "./firebase-config.js";
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M5.5 15.5h-1a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
     empty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 21 8l-9 4.8L3 8l9-4.8Z"/><path d="M7 10.6v4.6c0 1.4 2.2 3 5 3s5-1.6 5-3v-4.6"/></svg>',
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2C11 5.1 11.5 5 12 5c6 0 9.5 7 9.5 7-.6 1.2-1.6 2.7-3 4.1M6.3 6.3C4 7.9 2.5 12 2.5 12s3.5 7 9.5 7c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
     hand: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.4" y="11" width="10.4" height="9.6" rx="3"/><rect x="6.9" y="3.2" width="2.3" height="9" rx="1.15"/><rect x="9.6" y="1.6" width="2.3" height="10.6" rx="1.15"/><rect x="12.3" y="1.1" width="2.3" height="11.1" rx="1.15"/><rect x="15" y="2.1" width="2.3" height="10.1" rx="1.15"/><rect x="3.3" y="9.6" width="2.3" height="6.4" rx="1.15" transform="rotate(-24 4.45 12.8)"/></svg>'
   };
 
@@ -377,6 +379,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
+          '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
         '</div>' +
       '</div>' +
@@ -501,22 +504,60 @@ import { firebaseConfig } from "./firebase-config.js";
     var listEl = root.querySelector('#queueList');
     var waitCountEl = root.querySelector('#waitCount');
 
-    var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
-      if (snap.empty) {
+    // ---- Note visibility (projector-safe) ----
+    // Per-device setting: with notes visible on, any shared note shows
+    // inline (fine on the teacher's own screen). With it off -- handy when
+    // this board is thrown up on a projector -- notes are replaced with a
+    // "Show note" button, so nothing private is readable at a glance; a
+    // click reveals just that one note.
+    var notesMode = loadLS('rmh_notesmode_v1') || 'show';
+    var revealedNotes = {};
+    var lastQueueDocs = [];
+    var notesToggleBtn = root.querySelector('#notesToggleBtn');
+
+    function updateNotesToggleBtn() {
+      notesToggleBtn.innerHTML = notesMode === 'hidden' ? icons.eyeOff : icons.eye;
+      notesToggleBtn.title = notesMode === 'hidden'
+        ? 'Notes hidden on this screen (projector-safe) — click to show them'
+        : 'Notes visible — click to hide for a projector';
+    }
+    updateNotesToggleBtn();
+
+    notesToggleBtn.addEventListener('click', function () {
+      notesMode = notesMode === 'hidden' ? 'show' : 'hidden';
+      saveLS('rmh_notesmode_v1', notesMode);
+      revealedNotes = {};
+      updateNotesToggleBtn();
+      renderQueueRows(lastQueueDocs);
+    });
+
+    function renderQueueRows(docs) {
+      lastQueueDocs = docs;
+      if (!docs.length) {
         listEl.innerHTML = '<div class="empty-state">' + icons.empty + '<p>No one is waiting. The queue fills up here as hands go up.</p></div>';
         waitCountEl.textContent = 'Waiting for students…';
         return;
       }
-      waitCountEl.textContent = snap.size + (snap.size === 1 ? ' student waiting' : ' students waiting');
+      waitCountEl.textContent = docs.length + (docs.length === 1 ? ' student waiting' : ' students waiting');
       var html = '';
-      snap.docs.forEach(function (doc, i) {
+      docs.forEach(function (doc, i) {
         var d = doc.data() || {};
         var isNext = i === 0;
+        var noteHtml = '';
+        if (d.note) {
+          if (notesMode === 'hidden' && !revealedNotes[doc.id]) {
+            noteHtml = '<button class="note-peek" data-id="' + esc(doc.id) + '">Show note</button>';
+          } else {
+            noteHtml = '<div class="note">' + esc(d.note) +
+              (notesMode === 'hidden' ? ' <button class="note-hide-again" data-id="' + esc(doc.id) + '">hide</button>' : '') +
+              '</div>';
+          }
+        }
         html += '<div class="stub' + (isNext ? ' next' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
           '<div class="who"><div class="name">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
             '<div class="wait mono">waiting <span class="wait-time">0:00</span></div>' +
-            (d.note ? '<div class="note">' + esc(d.note) + '</div>' : '') +
+            noteHtml +
           '</div>' +
           (isNext ? '<span class="next-badge">Next</span>' : '') +
           '<button class="help-btn" data-id="' + esc(doc.id) + '">Mark helped</button>' +
@@ -531,7 +572,23 @@ import { firebaseConfig } from "./firebase-config.js";
           });
         });
       });
+      listEl.querySelectorAll('.note-peek').forEach(function (b) {
+        b.addEventListener('click', function () {
+          revealedNotes[b.getAttribute('data-id')] = true;
+          renderQueueRows(lastQueueDocs);
+        });
+      });
+      listEl.querySelectorAll('.note-hide-again').forEach(function (b) {
+        b.addEventListener('click', function () {
+          delete revealedNotes[b.getAttribute('data-id')];
+          renderQueueRows(lastQueueDocs);
+        });
+      });
       tickWaitTimes(listEl);
+    }
+
+    var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
+      renderQueueRows(snap.docs);
     }, function () {
       showToast('Lost the live connection. Reloading may help.');
     });
