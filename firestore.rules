@@ -30,10 +30,16 @@ service cloud.firestore {
     match /sessions/{code} {
       allow read: if true;
       allow create: if request.auth != null && isValidSession(request.resource.data);
-      allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['announcement', 'discussionMode', 'questionsVisible', 'mutedUsers'])
-        && isValidSessionUpdate(request.resource.data);
+      allow update: if request.auth != null && (
+          // Announcement-only updates
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement'])
+           && isValidAnnouncementUpdate(request.resource.data))
+          ||
+          // Discussion control updates (discussionMode, questionsVisible, mutedUsers)
+          (request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['discussionMode', 'questionsVisible', 'mutedUsers'])
+           && isValidDiscussionUpdate(request.resource.data))
+        );
       allow delete: if request.auth != null;
 
       match /queue/{entryId} {
@@ -82,9 +88,8 @@ service cloud.firestore {
         && data.status == 'waiting';
     }
 
-    function isValidSessionUpdate(data) {
-      return isValidAnnouncementUpdate(data)
-        && (!('discussionMode' in data) || data.discussionMode is bool)
+    function isValidDiscussionUpdate(data) {
+      return (!('discussionMode' in data) || data.discussionMode is bool)
         && (!('questionsVisible' in data) || data.questionsVisible is bool)
         && (!('mutedUsers' in data) || data.mutedUsers is map);
     }
