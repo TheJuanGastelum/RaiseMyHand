@@ -1353,7 +1353,26 @@ import { firebaseConfig } from "./firebase-config.js";
         });
       });
 
-      var confirmingRemoval = false;
+      // Watch the specific ticket document directly for deletion.
+      // An ordered collection query can deliver its first snapshot before
+      // Firestore propagates a brand-new write to the query index, making
+      // the ticket appear missing moments after creation. Relying on that
+      // alone (even with a confirmatory .get()) risks a false renderCalled()
+      // which clears myTicketId and lets the student raise a duplicate hand,
+      // leaving a ghost ticket visible on the teacher's board forever.
+      // A doc-level listener on the exact path is immediately consistent.
+      var ticketSeen = false;
+      var ticketDocUnsub = queueCol(code).doc(myTicketId).onSnapshot(function (docSnap) {
+        if (docSnap.exists) {
+          ticketSeen = true;
+        } else if (ticketSeen) {
+          // Doc existed and is now gone — teacher removed us.
+          renderCalled();
+        }
+        // If !ticketSeen && !docSnap.exists: listener fired before the
+        // create propagated (shouldn't happen on a doc watch, but guard it).
+      }, function () {});
+      activeUnsubs.push(ticketDocUnsub);
 
       var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
         var idx = -1;
@@ -1361,31 +1380,7 @@ import { firebaseConfig } from "./firebase-config.js";
         snap.docs.forEach(function (doc, i) {
           if (doc.id === myTicketId) { idx = i; mine = doc; }
         });
-        if (idx === -1) {
-          // Our ticket isn't in this snapshot -- normally because the
-          // teacher marked us helped and deleted it. But a brand-new
-          // collection query like this one can occasionally deliver its
-          // first snapshot before it's fully caught up with a write we
-          // just made a moment ago (raising a hand), which would
-          // otherwise show the "called" screen and clear our ticket ID
-          // while the ticket is actually still sitting in the queue --
-          // and raising again would then add a second, duplicate entry.
-          // Confirm directly against our own ticket doc before acting on
-          // that, instead of trusting this query alone.
-          if (!confirmingRemoval) {
-            confirmingRemoval = true;
-            var checkingId = myTicketId;
-            queueCol(code).doc(checkingId).get().then(function (docSnap) {
-              confirmingRemoval = false;
-              if (!docSnap.exists && myTicketId === checkingId) {
-                renderCalled();
-              }
-              // else: false alarm -- our ticket is still there; the next
-              // snapshot from this listener will pick it back up.
-            }).catch(function () { confirmingRemoval = false; });
-          }
-          return;
-        }
+        if (idx === -1) return; // deletion is handled by ticketDocUnsub above
         var card = document.getElementById('ticketCard');
         if (card && mine) {
           card.setAttribute('data-joined', (mine.data() || {}).joinedAt || Date.now());
