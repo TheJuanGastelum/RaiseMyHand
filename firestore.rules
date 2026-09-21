@@ -31,14 +31,26 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && isValidSession(request.resource.data);
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement'])
-        && isValidAnnouncementUpdate(request.resource.data);
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['announcement', 'discussionMode', 'questionsVisible', 'mutedUsers'])
+        && isValidSessionUpdate(request.resource.data);
       allow delete: if request.auth != null;
 
       match /queue/{entryId} {
         allow read: if true;
         allow create: if request.auth != null && isValidEntry(request.resource.data);
         allow update: if false;
+        allow delete: if request.auth != null;
+      }
+
+      match /questions/{questionId} {
+        allow read: if true;
+        allow create: if request.auth != null
+          && isValidQuestion(request.resource.data)
+          && get(/databases/$(database)/documents/sessions/$(code)).data.discussionMode == true;
+        allow update: if request.auth != null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          && request.resource.data.status in ['active', 'skipped'];
         allow delete: if request.auth != null;
       }
     }
@@ -70,8 +82,25 @@ service cloud.firestore {
         && data.status == 'waiting';
     }
 
+    function isValidSessionUpdate(data) {
+      return isValidAnnouncementUpdate(data)
+        && (!('discussionMode' in data) || data.discussionMode is bool)
+        && (!('questionsVisible' in data) || data.questionsVisible is bool)
+        && (!('mutedUsers' in data) || data.mutedUsers is map);
+    }
+
     function isValidAnnouncementUpdate(data) {
       return data.announcement == null || isValidAnnouncement(data.announcement);
+    }
+
+    function isValidQuestion(data) {
+      return data.keys().hasOnly(['text', 'authorId', 'authorName', 'authorSeat', 'status', 'createdAt'])
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 300
+        && data.authorId is string
+        && (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 40))
+        && (!('authorSeat' in data) || (data.authorSeat is string && data.authorSeat.size() <= 12))
+        && data.status == 'active'
+        && data.createdAt is number;
     }
 
     function isValidFeedback(data) {

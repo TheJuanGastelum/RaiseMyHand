@@ -188,6 +188,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
   function sessionDoc(code) { return db.doc('sessions/' + code); }
   function queueCol(code) { return db.collection('sessions/' + code + '/queue'); }
+  function questionsCol(code) { return db.collection('sessions/' + code + '/questions'); }
 
   var icons = {
     teacher: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-icon)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/></svg>',
@@ -201,7 +202,10 @@ import { firebaseConfig } from "./firebase-config.js";
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 0 1 9.3 3.6a.6.6 0 0 0-.75-.8A9.4 9.4 0 1 0 21.2 15.45a.6.6 0 0 0-.8-.75Z"/></svg>',
     megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H6l1.2 5a1 1 0 0 0 1 .8h1a1 1 0 0 0 .97-1.24L9 15h1l9 4V6l-9 4H4.5A1.5 1.5 0 0 0 3 10.5Z"/><path d="M19 9.5v6"/></svg>',
-    feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 8.8h8M8 12h5"/></svg>'
+    feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 8.8h8M8 12h5"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 9h8M8 12.5h5"/></svg>',
+    userMute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 10l4 4M21 10l-4 4"/></svg>',
+    userUnmute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 12l2 2 4-4"/></svg>'
   };
 
   function identityLabel(name, seat) {
@@ -514,8 +518,24 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
+          '<button class="icon-btn" id="discussBtn" title="Discussion mode — click to enable student questions" aria-label="Toggle discussion mode">' + icons.chat + '</button>' +
           '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="discuss-card" id="discussCard" style="display:none;">' +
+        '<div class="discuss-head">' +
+          '<h3>Student Questions</h3>' +
+          '<div class="discuss-actions">' +
+            '<span class="discuss-count" id="discussCount">0 questions</span>' +
+            '<button class="icon-btn" id="qVisBtn" title="Hide questions (projector mode)" aria-label="Toggle question visibility"></button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="discussHiddenNotice" class="discuss-hidden-notice" style="display:none;">Questions hidden for projector &mdash; <button id="showQuestionsBtn">show them</button></div>' +
+        '<div id="activeQList"></div>' +
+        '<div id="skippedSection" style="display:none;">' +
+          '<button class="skipped-toggle-btn" id="skippedToggleBtn"></button>' +
+          '<div id="skippedQList" style="display:none;"></div>' +
         '</div>' +
       '</div>' +
       '<div class="announce-card" id="announceCard">' +
@@ -640,11 +660,25 @@ import { firebaseConfig } from "./firebase-config.js";
       });
     });
 
+    // Session snapshot: handles announcements AND discussion mode state.
+    // Discussion mode variables are declared later in this function but their
+    // assignments happen on first snapshot fire, which is always async, so by
+    // then the variables are in scope.
     var annUnsub = sessionDoc(code).onSnapshot(function (snap) {
       if (!snap.exists) return;
       var data = snap.data() || {};
       lastAnn = data.announcement || null;
       renderAnnounceState(lastAnn);
+      // Discussion fields — picked up once the discussion section is wired up.
+      if (typeof discussionMode !== 'undefined') {
+        discussionMode = !!data.discussionMode;
+        questionsVisible = data.questionsVisible !== false;
+        mutedUsers = data.mutedUsers || {};
+        updateDiscussBtn();
+        updateQVisBtn();
+        discussCard.style.display = discussionMode ? 'block' : 'none';
+        if (discussionMode) renderQuestionsPanel();
+      }
     });
     activeUnsubs.push(annUnsub);
     var annTick = setInterval(function () { if (lastAnn) renderAnnounceState(lastAnn); }, 15000);
@@ -744,6 +778,193 @@ import { firebaseConfig } from "./firebase-config.js";
     activeUnsubs.push(unsub);
 
     tickHandle = setInterval(function () { tickWaitTimes(listEl); }, 1000);
+
+    // ---- Discussion mode ----
+    var discussCard = root.querySelector('#discussCard');
+    var discussBtn = root.querySelector('#discussBtn');
+    var activeQListEl = root.querySelector('#activeQList');
+    var skippedSection = root.querySelector('#skippedSection');
+    var skippedQListEl = root.querySelector('#skippedQList');
+    var skippedToggleBtn = root.querySelector('#skippedToggleBtn');
+    var discussCountEl = root.querySelector('#discussCount');
+    var discussHiddenNotice = root.querySelector('#discussHiddenNotice');
+    var qVisBtn = root.querySelector('#qVisBtn');
+
+    var discussionMode = false;
+    var questionsVisible = true;
+    var mutedUsers = {};
+    var lastQuestions = [];
+    var skippedOpen = false;
+
+    function updateDiscussBtn() {
+      discussBtn.innerHTML = icons.chat;
+      discussBtn.title = discussionMode
+        ? 'Discussion mode ON — click to turn off'
+        : 'Discussion mode — click to enable student questions';
+      discussBtn.style.color = discussionMode ? 'var(--accent)' : '';
+      discussBtn.style.background = discussionMode ? 'var(--accent-soft)' : '';
+    }
+
+    function updateQVisBtn() {
+      qVisBtn.innerHTML = questionsVisible ? icons.eye : icons.eyeOff;
+      qVisBtn.title = questionsVisible
+        ? 'Hide questions (projector mode)'
+        : 'Show questions';
+      qVisBtn.setAttribute('aria-label', qVisBtn.title);
+    }
+
+    function renderQuestionsPanel() {
+      var activeQs = lastQuestions.filter(function (q) { return q.status === 'active'; });
+      var skippedQs = lastQuestions.filter(function (q) { return q.status === 'skipped'; });
+
+      discussCountEl.textContent = activeQs.length + (activeQs.length === 1 ? ' question' : ' questions');
+
+      // Hidden notice
+      discussHiddenNotice.style.display = questionsVisible ? 'none' : 'block';
+
+      // Active questions
+      if (!questionsVisible) {
+        activeQListEl.innerHTML = '';
+      } else if (!activeQs.length) {
+        activeQListEl.innerHTML = '<div class="discuss-empty">No questions yet — students can type questions from their devices.</div>';
+      } else {
+        var html = '';
+        activeQs.forEach(function (q) {
+          var isMuted = !!mutedUsers[q.authorId];
+          html +=
+            '<div class="q-item">' +
+              '<div class="q-content">' +
+                '<div class="q-text">' + esc(q.text) + '</div>' +
+                '<div class="q-meta">' + esc(identityLabel(q.authorName, q.authorSeat)) + '</div>' +
+              '</div>' +
+              '<div class="q-actions">' +
+                '<button class="q-answered" data-id="' + esc(q.id) + '" title="Mark answered">✓ Answered</button>' +
+                '<button class="q-skip" data-id="' + esc(q.id) + '" title="Skip for now">Skip →</button>' +
+                '<button class="q-mute' + (isMuted ? ' is-muted' : '') + '" data-id="' + esc(q.id) + '" data-uid="' + esc(q.authorId) + '" title="' + (isMuted ? 'Unmute this student' : 'Mute this student from posting questions') + '">' +
+                  (isMuted ? icons.userUnmute : icons.userMute) +
+                '</button>' +
+              '</div>' +
+            '</div>';
+        });
+        activeQListEl.innerHTML = html;
+
+        activeQListEl.querySelectorAll('.q-answered').forEach(function (b) {
+          b.addEventListener('click', function () {
+            b.disabled = true;
+            questionsCol(code).doc(b.getAttribute('data-id')).delete().catch(function () {
+              b.disabled = false;
+              showToast('Could not mark as answered.');
+            });
+          });
+        });
+
+        activeQListEl.querySelectorAll('.q-skip').forEach(function (b) {
+          b.addEventListener('click', function () {
+            b.disabled = true;
+            questionsCol(code).doc(b.getAttribute('data-id')).update({ status: 'skipped' }).catch(function () {
+              b.disabled = false;
+              showToast('Could not skip that question.');
+            });
+          });
+        });
+
+        activeQListEl.querySelectorAll('.q-mute').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var uid = b.getAttribute('data-uid');
+            var newMuted = Object.assign({}, mutedUsers);
+            if (newMuted[uid]) {
+              delete newMuted[uid];
+            } else {
+              newMuted[uid] = true;
+            }
+            sessionDoc(code).update({ mutedUsers: newMuted }).catch(function () {
+              showToast('Could not update mute status.');
+            });
+          });
+        });
+      }
+
+      // Skipped section
+      if (skippedQs.length > 0) {
+        skippedSection.style.display = 'block';
+        skippedToggleBtn.textContent = (skippedOpen ? '▾' : '▸') + ' Skipped (' + skippedQs.length + ')';
+        if (skippedOpen) {
+          var sHtml = '';
+          skippedQs.forEach(function (q) {
+            sHtml +=
+              '<div class="q-item">' +
+                '<div class="q-content">' +
+                  '<div class="q-text">' + esc(q.text) + '</div>' +
+                  '<div class="q-meta">' + esc(identityLabel(q.authorName, q.authorSeat)) + '</div>' +
+                '</div>' +
+                '<div class="q-actions"><button class="q-back" data-id="' + esc(q.id) + '">↩ Move back</button></div>' +
+              '</div>';
+          });
+          skippedQListEl.innerHTML = sHtml;
+          skippedQListEl.style.display = 'block';
+          skippedQListEl.querySelectorAll('.q-back').forEach(function (b) {
+            b.addEventListener('click', function () {
+              b.disabled = true;
+              questionsCol(code).doc(b.getAttribute('data-id')).update({ status: 'active' }).catch(function () {
+                b.disabled = false;
+                showToast('Could not move question back.');
+              });
+            });
+          });
+        } else {
+          skippedQListEl.style.display = 'none';
+        }
+      } else {
+        skippedSection.style.display = 'none';
+        skippedQListEl.style.display = 'none';
+      }
+    }
+
+    discussBtn.addEventListener('click', function () {
+      sessionDoc(code).update({ discussionMode: !discussionMode }).catch(function () {
+        showToast('Could not toggle discussion mode.');
+      });
+    });
+
+    qVisBtn.addEventListener('click', function () {
+      sessionDoc(code).update({ questionsVisible: !questionsVisible }).catch(function () {
+        showToast('Could not toggle question visibility.');
+      });
+    });
+
+    root.querySelector('#showQuestionsBtn').addEventListener('click', function () {
+      sessionDoc(code).update({ questionsVisible: true }).catch(function () {
+        showToast('Could not show questions.');
+      });
+    });
+
+    skippedToggleBtn.addEventListener('click', function () {
+      skippedOpen = !skippedOpen;
+      renderQuestionsPanel();
+    });
+
+    // Subscribe to questions collection
+    var qUnsub = questionsCol(code).orderBy('createdAt', 'asc').onSnapshot(function (snap) {
+      lastQuestions = snap.docs.map(function (d) {
+        var qd = d.data() || {};
+        return {
+          id: d.id,
+          text: qd.text || '',
+          authorId: qd.authorId || '',
+          authorName: qd.authorName || '',
+          authorSeat: qd.authorSeat || '',
+          status: qd.status || 'active',
+          createdAt: qd.createdAt || 0
+        };
+      });
+      if (discussionMode) renderQuestionsPanel();
+    }, function () {
+      // Non-fatal: just log, questions panel stays stale
+    });
+    activeUnsubs.push(qUnsub);
+
+    updateDiscussBtn();
+    updateQVisBtn();
   }
 
   function tickWaitTimes(container) {
@@ -839,12 +1060,62 @@ import { firebaseConfig } from "./firebase-config.js";
   // ---------- Student: raise-hand pad + ticket ----------
   function renderStudentWait(code, className, name, seat) {
     setTopbar('student');
-    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div>');
+    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div><div id="questionSection" style="display:none;"></div>');
     var bannerEl = root.querySelector('#announceBanner');
     var inner = root.querySelector('#waitInner');
+    var questionSectionEl = root.querySelector('#questionSection');
     var keyHandler = null;
     var myTicketId = null;
     var bannerTimer = null;
+
+    var studentDiscussionMode = false;
+    var studentMuted = false;
+
+    function updateQuestionSection() {
+      if (!studentDiscussionMode) {
+        questionSectionEl.style.display = 'none';
+        return;
+      }
+      questionSectionEl.style.display = 'block';
+      questionSectionEl.className = 'question-section';
+
+      if (studentMuted) {
+        questionSectionEl.innerHTML = '<div class="question-muted">You&rsquo;ve been muted from posting questions in this session.</div>';
+        return;
+      }
+
+      // Don't re-render the form if it's already there (avoid clearing an
+      // in-progress draft when a session snapshot re-fires mid-typing).
+      if (questionSectionEl.querySelector('#qInput')) return;
+
+      questionSectionEl.innerHTML =
+        '<div class="question-box">' +
+          '<h3>Ask a question</h3>' +
+          '<textarea id="qInput" maxlength="300" placeholder="Type your question for the teacher…"></textarea>' +
+          '<button class="btn btn-primary q-submit-btn" id="qSubmitBtn">Submit question</button>' +
+        '</div>';
+
+      var qInput = questionSectionEl.querySelector('#qInput');
+      var qSubmitBtn = questionSectionEl.querySelector('#qSubmitBtn');
+
+      qSubmitBtn.addEventListener('click', function () {
+        var text = qInput.value.trim();
+        if (!text) { qInput.focus(); return; }
+        qSubmitBtn.disabled = true;
+        var uid = auth.currentUser && auth.currentUser.uid;
+        var entry = { text: text, authorId: uid || '', status: 'active', createdAt: Date.now() };
+        if (name && name.trim()) entry.authorName = name.trim();
+        if (seat && seat.trim()) entry.authorSeat = seat.trim();
+        questionsCol(code).add(entry).then(function () {
+          qInput.value = '';
+          qSubmitBtn.disabled = false;
+          showToast('Question submitted!');
+        }).catch(function () {
+          qSubmitBtn.disabled = false;
+          showToast('Could not submit question. Try again.');
+        });
+      });
+    }
 
     // A private reminder the student can jot for themselves ("what was I
     // going to ask?"). Only sent to Firestore -- and so only ever visible
@@ -1081,7 +1352,8 @@ import { firebaseConfig } from "./firebase-config.js";
       tickHandle = setInterval(function () { tickWaitTimes(document.body); }, 1000);
     }
 
-    // Watch for the session ending entirely, and for announcement updates.
+    // Watch for the session ending entirely, for announcement updates,
+    // and for discussion mode toggling.
     var sessUnsub = sessionDoc(code).onSnapshot(function (snap) {
       if (!snap.exists) {
         showToast('This session has ended.');
@@ -1090,6 +1362,12 @@ import { firebaseConfig } from "./firebase-config.js";
       }
       var data = snap.data() || {};
       updateBanner(data.announcement || null);
+
+      // Discussion mode
+      var uid = auth.currentUser && auth.currentUser.uid;
+      studentDiscussionMode = !!data.discussionMode;
+      studentMuted = !!(data.mutedUsers && uid && data.mutedUsers[uid]);
+      updateQuestionSection();
     });
     activeUnsubs.push(sessUnsub);
 

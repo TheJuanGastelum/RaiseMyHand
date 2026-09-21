@@ -372,6 +372,43 @@
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+  /* ---- Discussion mode (teacher panel) ---- */
+  .discuss-card{ flex:0 0 auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; margin-bottom:18px; }
+  .discuss-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px; }
+  .discuss-head h3{ font-family:"Zilla Slab"; font-size:1rem; }
+  .discuss-actions{ display:flex; align-items:center; gap:8px; }
+  .discuss-count{ font-size:.78rem; color:var(--ink-faint); font-weight:600; }
+  .discuss-empty{ text-align:center; padding:18px; color:var(--ink-faint); font-size:.88rem; }
+  .discuss-hidden-notice{ background:var(--surface-2); border-radius:10px; padding:12px 14px; text-align:center; color:var(--ink-faint); font-size:.85rem; margin-bottom:8px; }
+  .discuss-hidden-notice button{ background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:2px; font-size:inherit; padding:0 2px; }
+  .q-item{ display:flex; align-items:flex-start; gap:12px; background:var(--surface-2); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+  .q-item:last-child{ margin-bottom:0; }
+  .q-content{ flex:1 1 auto; min-width:0; }
+  .q-text{ font-size:.9rem; line-height:1.45; color:var(--ink); }
+  .q-meta{ font-size:.75rem; color:var(--ink-soft); margin-top:3px; }
+  .q-actions{ display:flex; gap:6px; flex:0 0 auto; align-items:flex-start; flex-wrap:wrap; }
+  .q-actions button{ padding:5px 11px; font-size:.78rem; font-weight:700; border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .q-answered{ background:var(--good-soft); color:var(--good); border:none; }
+  .q-answered:hover{ filter:brightness(.95); }
+  .q-skip{ background:transparent; color:var(--ink-soft); border:1.5px solid var(--line); }
+  .q-skip:hover{ border-color:var(--ink-faint); color:var(--ink); }
+  .q-mute{ background:transparent; color:var(--danger); border:1.5px solid var(--line); }
+  .q-mute:hover{ border-color:var(--danger); }
+  .q-mute.is-muted{ opacity:.55; }
+  .q-back{ background:var(--accent-soft); color:var(--accent); border:none; }
+  .q-back:hover{ filter:brightness(.95); }
+  .skipped-toggle-btn{ background:none; border:none; color:var(--ink-faint); font-size:.8rem; font-weight:700; cursor:pointer; padding:6px 0 2px; text-decoration:underline; text-underline-offset:2px; }
+  .skipped-toggle-btn:hover{ color:var(--ink-soft); }
+  .discuss-mode-active .icon-btn{ color:var(--accent); background:var(--accent-soft); }
+
+  /* ---- Discussion mode (student question form) ---- */
+  .question-section{ margin-top:22px; text-align:left; }
+  .question-box{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .question-box h3{ font-family:"Zilla Slab"; font-size:1rem; margin-bottom:10px; color:var(--ink); }
+  .question-box textarea{ min-height:60px; }
+  .question-box .q-submit-btn{ margin-top:8px; }
+  .question-muted{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 18px; text-align:center; color:var(--ink-faint); font-size:.88rem; box-shadow:var(--shadow); }
+
   /* ---- Phone / narrow-viewport tuning ---- */
   @media (max-width: 480px){
     /* Inputs at 16px stop iOS Safari from zooming in on focus. */
@@ -391,6 +428,8 @@
     .icon-btn{ width:38px; height:38px; }
     .theme-btn, .mode-btn, .theme-pop button{ width:28px; height:28px; }
     .feedback-pop{ width:min(240px, calc(100vw - 32px)); }
+    .q-actions{ flex-direction:column; gap:4px; }
+    .q-actions button{ width:100%; text-align:center; }
   }
 </style>
 </head>
