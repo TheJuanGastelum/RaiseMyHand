@@ -406,9 +406,20 @@
   .board-panels{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
   .board-panels-right{ display:contents; }
   @media (min-width:641px){
+    /* Widen the board in split mode so both columns get enough space */
+    .screen.wide.layout-split-active{ max-width:900px; }
     .board-panels.layout-split{ flex-direction:row; align-items:stretch; gap:18px; }
-    .board-panels.layout-split .board-panels-right{ flex:0 0 42%; display:flex; flex-direction:column; min-width:0; overflow-y:auto; }
-    .board-panels.layout-split .queue-scroll{ order:-1; flex:1 1 auto; min-width:0; overflow-y:auto; margin-left:0; padding-left:4px; }
+    .board-panels.layout-split .board-panels-right{ flex:0 0 40%; display:flex; flex-direction:column; min-width:0; overflow-y:auto; }
+    /* Queue goes left; restore left padding so the ticket-punch ::before stays visible */
+    .board-panels.layout-split .queue-scroll{ order:-1; flex:1 1 auto; min-width:0; overflow-y:auto; margin-left:0; padding-left:18px; }
+    /* Give queue rows slightly tighter padding so names have room */
+    .board-panels.layout-split .stub{ padding:10px 12px 10px 20px; gap:10px; }
+    /* Allow names and notes to wrap instead of silently truncating */
+    .board-panels.layout-split .stub .who .name{ white-space:normal; overflow:visible; word-break:break-word; }
+    .board-panels.layout-split .stub .who .note{ white-space:normal; overflow:visible; }
+    /* Stack question action buttons vertically in the narrow right panel */
+    .board-panels.layout-split .q-actions{ flex-direction:column; gap:3px; min-width:76px; flex:0 0 auto; }
+    .board-panels.layout-split .q-actions button{ width:100%; justify-content:center; }
   }
 
   /* ---- Landing role-cycle animation ---- */

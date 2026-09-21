@@ -766,7 +766,7 @@ import { firebaseConfig } from "./firebase-config.js";
         }
         html += '<div class="stub' + (isNext ? ' next' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
-          '<div class="who"><div class="name">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
+          '<div class="who"><div class="name" title="' + esc(identityLabel(d.name, d.seat)) + '">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
             '<div class="wait mono">waiting <span class="wait-time">0:00</span></div>' +
             noteHtml +
           '</div>' +
@@ -1000,10 +1000,12 @@ import { firebaseConfig } from "./firebase-config.js";
     var layoutBtn = root.querySelector('#layoutBtn');
 
     function applyLayout() {
-      boardPanelsEl.classList.toggle('layout-split', layoutMode === 'split');
-      layoutBtn.style.color = layoutMode === 'split' ? 'var(--accent)' : '';
-      layoutBtn.style.background = layoutMode === 'split' ? 'var(--accent-soft)' : '';
-      layoutBtn.title = layoutMode === 'split' ? 'Switch to stacked layout' : 'Switch to side-by-side layout';
+      var isSplit = layoutMode === 'split';
+      boardPanelsEl.classList.toggle('layout-split', isSplit);
+      root.classList.toggle('layout-split-active', isSplit);
+      layoutBtn.style.color = isSplit ? 'var(--accent)' : '';
+      layoutBtn.style.background = isSplit ? 'var(--accent-soft)' : '';
+      layoutBtn.title = isSplit ? 'Switch to stacked layout' : 'Switch to side-by-side layout';
     }
 
     layoutBtn.addEventListener('click', function () {
