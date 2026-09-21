@@ -387,7 +387,8 @@
   .q-text{ font-size:.9rem; line-height:1.45; color:var(--ink); }
   .q-meta{ font-size:.75rem; color:var(--ink-soft); margin-top:3px; }
   .q-actions{ display:flex; gap:6px; flex:0 0 auto; align-items:flex-start; flex-wrap:wrap; }
-  .q-actions button{ padding:5px 11px; font-size:.78rem; font-weight:700; border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .q-actions button{ padding:5px 11px; font-size:.78rem; font-weight:700; border-radius:6px; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
+  .q-actions button svg{ width:13px; height:13px; flex:0 0 auto; }
   .q-answered{ background:var(--good-soft); color:var(--good); border:none; }
   .q-answered:hover{ filter:brightness(.95); }
   .q-skip{ background:transparent; color:var(--ink-soft); border:1.5px solid var(--line); }
@@ -400,6 +401,19 @@
   .skipped-toggle-btn{ background:none; border:none; color:var(--ink-faint); font-size:.8rem; font-weight:700; cursor:pointer; padding:6px 0 2px; text-decoration:underline; text-underline-offset:2px; }
   .skipped-toggle-btn:hover{ color:var(--ink-soft); }
   .discuss-mode-active .icon-btn{ color:var(--accent); background:var(--accent-soft); }
+
+  /* ---- Teacher board panel layout (stacked / side-by-side) ---- */
+  .board-panels{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+  .board-panels-right{ display:contents; }
+  @media (min-width:641px){
+    .board-panels.layout-split{ flex-direction:row; align-items:stretch; gap:18px; }
+    .board-panels.layout-split .board-panels-right{ flex:0 0 42%; display:flex; flex-direction:column; min-width:0; overflow-y:auto; }
+    .board-panels.layout-split .queue-scroll{ order:-1; flex:1 1 auto; min-width:0; overflow-y:auto; margin-left:0; padding-left:4px; }
+  }
+
+  /* ---- Landing role-cycle animation ---- */
+  .role-cycle{ display:inline; transition:opacity .3s ease; }
+  .role-cycle-fade{ opacity:0; }
 
   /* ---- Discussion mode (student question form) ---- */
   .question-section{ margin-top:22px; text-align:left; }

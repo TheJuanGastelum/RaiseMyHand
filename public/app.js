@@ -202,10 +202,11 @@ import { firebaseConfig } from "./firebase-config.js";
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 0 1 9.3 3.6a.6.6 0 0 0-.75-.8A9.4 9.4 0 1 0 21.2 15.45a.6.6 0 0 0-.8-.75Z"/></svg>',
     megaphone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H6l1.2 5a1 1 0 0 0 1 .8h1a1 1 0 0 0 .97-1.24L9 15h1l9 4V6l-9 4H4.5A1.5 1.5 0 0 0 3 10.5Z"/><path d="M19 9.5v6"/></svg>',
-    feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 8.8h8M8 12h5"/></svg>',
-    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v9a1.5 1.5 0 0 1-1.5 1.5H9l-4 3.5V16H5.5A1.5 1.5 0 0 1 4 14.5v-9Z"/><path d="M8 9h8M8 12.5h5"/></svg>',
+    feedback: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M11 21h2M12 3a6 6 0 0 1 6 6c0 2.5-1.3 4.7-3.5 5.7V16a.5.5 0 0 1-.5.5h-4a.5.5 0 0 1-.5-.5v-1.3C7.3 13.7 6 11.5 6 9a6 6 0 0 1 6-6Z"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h11A1.5 1.5 0 0 1 16 5.5v6A1.5 1.5 0 0 1 14.5 13H8l-4 3.5V13H3.5A1.5 1.5 0 0 1 2 11.5v-6Z"/><path d="M16 7.5h2.5A1.5 1.5 0 0 1 20 9v5a1.5 1.5 0 0 1-1.5 1.5H17l-3 2.5V15h-.5"/></svg>',
     userMute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 10l4 4M21 10l-4 4"/></svg>',
-    userUnmute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 12l2 2 4-4"/></svg>'
+    userUnmute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 12l2 2 4-4"/></svg>',
+    layout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="7.5" height="16" rx="1.5"/></svg>'
   };
 
   function identityLabel(name, seat) {
@@ -365,28 +366,50 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   // ---------- Landing ----------
+  var LEADER_TERMS = ['the teacher', 'a TA', 'an organizer', 'the host', 'a facilitator', 'an instructor'];
+  var JOINER_TERMS = ['a student', 'a participant', 'an attendee', 'a learner', 'a team member'];
+
   function renderLanding() {
     setTopbar(null);
     var root = mount(
       '<div class="lede">' +
         '<h1>Raise a hand from anywhere in the room.</h1>' +
-        '<p>Students tap in from their own device and line up in order. Teachers watch one live queue instead of a sea of hands.</p>' +
+        '<p>Anyone can tap in from their own device and line up in order. One live queue instead of a sea of hands.</p>' +
       '</div>' +
       '<div class="role-grid">' +
         '<button class="role-card teacher" id="pickTeacher">' +
           '<div class="icon-badge">' + icons.teacher + '</div>' +
-          '<h2>I&rsquo;m the teacher</h2>' +
-          '<p>Start a session, share the code, and watch students line up in real time.</p>' +
+          '<h2>I&rsquo;m <span class="role-cycle" id="leaderCycle">the teacher</span></h2>' +
+          '<p>Start a session, share the code, and watch the queue update in real time.</p>' +
         '</button>' +
         '<button class="role-card student" id="pickStudent">' +
           '<div class="icon-badge">' + icons.student + '</div>' +
-          '<h2>I&rsquo;m a student</h2>' +
-          '<p>Enter your class code, then press space or tap the button to raise your hand.</p>' +
+          '<h2>I&rsquo;m <span class="role-cycle" id="joinerCycle">a student</span></h2>' +
+          '<p>Enter your code, then press space or tap the button to raise your hand.</p>' +
         '</button>' +
       '</div>'
     );
     root.querySelector('#pickTeacher').addEventListener('click', function () { renderTeacherStart(); });
     root.querySelector('#pickStudent').addEventListener('click', function () { renderStudentJoin(); });
+
+    // Slowly cycle through role synonyms to signal the app works beyond classrooms
+    var leaderEl = root.querySelector('#leaderCycle');
+    var joinerEl = root.querySelector('#joinerCycle');
+    var li = 0; var ji = 0;
+    var cycleTimer = setInterval(function () {
+      if (!leaderEl || !leaderEl.isConnected) { clearInterval(cycleTimer); return; }
+      li = (li + 1) % LEADER_TERMS.length;
+      ji = (ji + 1) % JOINER_TERMS.length;
+      leaderEl.classList.add('role-cycle-fade');
+      joinerEl.classList.add('role-cycle-fade');
+      setTimeout(function () {
+        if (leaderEl.isConnected) leaderEl.textContent = LEADER_TERMS[li];
+        if (joinerEl.isConnected) joinerEl.textContent = JOINER_TERMS[ji];
+        leaderEl.classList.remove('role-cycle-fade');
+        joinerEl.classList.remove('role-cycle-fade');
+      }, 300);
+    }, 3200);
+    activeUnsubs.push(function () { clearInterval(cycleTimer); });
   }
 
   // ---------- Teacher: start / resume ----------
@@ -519,42 +542,47 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
           '<button class="icon-btn" id="discussBtn" title="Discussion mode — click to enable student questions" aria-label="Toggle discussion mode">' + icons.chat + '</button>' +
+          '<button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button>' +
           '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
         '</div>' +
       '</div>' +
-      '<div class="discuss-card" id="discussCard" style="display:none;">' +
-        '<div class="discuss-head">' +
-          '<h3>Student Questions</h3>' +
-          '<div class="discuss-actions">' +
-            '<span class="discuss-count" id="discussCount">0 questions</span>' +
-            '<button class="icon-btn" id="qVisBtn" title="Hide questions (projector mode)" aria-label="Toggle question visibility"></button>' +
+      '<div class="board-panels" id="boardPanels">' +
+        '<div class="board-panels-right" id="boardPanelsRight">' +
+          '<div class="discuss-card" id="discussCard" style="display:none;">' +
+            '<div class="discuss-head">' +
+              '<h3>Student Questions</h3>' +
+              '<div class="discuss-actions">' +
+                '<span class="discuss-count" id="discussCount">0 questions</span>' +
+                '<button class="icon-btn" id="qVisBtn" title="Hide questions (projector mode)" aria-label="Toggle question visibility"></button>' +
+              '</div>' +
+            '</div>' +
+            '<div id="discussHiddenNotice" class="discuss-hidden-notice" style="display:none;">Questions hidden for projector &mdash; <button id="showQuestionsBtn">show them</button></div>' +
+            '<div id="activeQList"></div>' +
+            '<div id="skippedSection" style="display:none;">' +
+              '<button class="skipped-toggle-btn" id="skippedToggleBtn"></button>' +
+              '<div id="skippedQList" style="display:none;"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="announce-card" id="announceCard">' +
+            '<div class="announce-card-head"><h3>Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
+            '<div id="announceCurrent" style="display:none;"></div>' +
+            '<div class="announce-form">' +
+              '<textarea id="annText" maxlength="200" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
+              '<div class="announce-controls">' +
+                '<select id="annMode">' +
+                  '<option value="dismissable">Students can dismiss it</option>' +
+                  '<option value="timed">Auto-clear after a few minutes</option>' +
+                  '<option value="persistent">Stays until I clear it</option>' +
+                '</select>' +
+                '<input type="text" inputmode="numeric" id="annMinutes" class="mono" value="5" style="display:none;width:64px;">' +
+                '<button class="btn btn-primary" id="annPostBtn" style="width:auto;">Post</button>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
-        '<div id="discussHiddenNotice" class="discuss-hidden-notice" style="display:none;">Questions hidden for projector &mdash; <button id="showQuestionsBtn">show them</button></div>' +
-        '<div id="activeQList"></div>' +
-        '<div id="skippedSection" style="display:none;">' +
-          '<button class="skipped-toggle-btn" id="skippedToggleBtn"></button>' +
-          '<div id="skippedQList" style="display:none;"></div>' +
-        '</div>' +
+        '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
       '</div>' +
-      '<div class="announce-card" id="announceCard">' +
-        '<div class="announce-card-head"><h3>Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
-        '<div id="announceCurrent" style="display:none;"></div>' +
-        '<div class="announce-form">' +
-          '<textarea id="annText" maxlength="200" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
-          '<div class="announce-controls">' +
-            '<select id="annMode">' +
-              '<option value="dismissable">Students can dismiss it</option>' +
-              '<option value="timed">Auto-clear after a few minutes</option>' +
-              '<option value="persistent">Stays until I clear it</option>' +
-            '</select>' +
-            '<input type="text" inputmode="numeric" id="annMinutes" class="mono" value="5" style="display:none;width:64px;">' +
-            '<button class="btn btn-primary" id="annPostBtn" style="width:auto;">Post</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
       '<div class="board-footer"><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
     );
@@ -841,7 +869,7 @@ import { firebaseConfig } from "./firebase-config.js";
                 '<button class="q-answered" data-id="' + esc(q.id) + '" title="Mark answered">✓ Answered</button>' +
                 '<button class="q-skip" data-id="' + esc(q.id) + '" title="Skip for now">Skip →</button>' +
                 '<button class="q-mute' + (isMuted ? ' is-muted' : '') + '" data-id="' + esc(q.id) + '" data-uid="' + esc(q.authorId) + '" title="' + (isMuted ? 'Unmute this student' : 'Mute this student from posting questions') + '">' +
-                  (isMuted ? icons.userUnmute : icons.userMute) +
+                  (isMuted ? icons.userUnmute + ' Unmute' : icons.userMute + ' Mute') +
                 '</button>' +
               '</div>' +
             '</div>';
@@ -965,6 +993,26 @@ import { firebaseConfig } from "./firebase-config.js";
 
     updateDiscussBtn();
     updateQVisBtn();
+
+    // ---- Layout toggle (stacked vs side-by-side) ----
+    var layoutMode = loadLS('rmh_layout_v1') || 'stacked';
+    var boardPanelsEl = root.querySelector('#boardPanels');
+    var layoutBtn = root.querySelector('#layoutBtn');
+
+    function applyLayout() {
+      boardPanelsEl.classList.toggle('layout-split', layoutMode === 'split');
+      layoutBtn.style.color = layoutMode === 'split' ? 'var(--accent)' : '';
+      layoutBtn.style.background = layoutMode === 'split' ? 'var(--accent-soft)' : '';
+      layoutBtn.title = layoutMode === 'split' ? 'Switch to stacked layout' : 'Switch to side-by-side layout';
+    }
+
+    layoutBtn.addEventListener('click', function () {
+      layoutMode = layoutMode === 'split' ? 'stacked' : 'split';
+      saveLS('rmh_layout_v1', layoutMode);
+      applyLayout();
+    });
+
+    applyLayout();
   }
 
   function tickWaitTimes(container) {
