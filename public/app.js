@@ -84,6 +84,15 @@ import { firebaseConfig } from "./firebase-config.js";
   var LS_THEME_MODE = 'rmh_theme_mode_v1';
   var LS_THEME_LEGACY = 'rmh_theme_v1';
   var CODE_CHARS = '23456789ACDEFGHJKMNPQRSTUVWXYZ';
+  // A teacher can keep reopening the same code all semester. To make that
+  // pleasant instead of accumulating stale state:
+  // - After a few hours idle, reopening a session wipes its queue/
+  //   questions/announcement/discussion state so each class starts clean,
+  //   while keeping the code + teacher key unchanged.
+  // - After a long stretch nobody's touched it, a *new* session request
+  //   that happens to land on that code reclaims it outright.
+  var SOFT_RESET_IDLE_MS = 4 * 60 * 60 * 1000; // 4 hours
+  var HARD_EXPIRE_IDLE_MS = 75 * 24 * 60 * 60 * 1000; // ~75 days
 
   // ---------- Theme ----------
   // Each hue is a main-screen color paired with a text color that's
@@ -482,7 +491,9 @@ import { firebaseConfig } from "./firebase-config.js";
           return;
         }
         saveLS(LS_TEACHER, { code: code, className: data.className || '', teacherKey: key });
-        renderTeacherBoard(code, data.className || '', key);
+        maybeSoftReset(code, data).catch(function () {}).then(function () {
+          renderTeacherBoard(code, data.className || '', key);
+        });
       }).catch(function () {
         setErr('Something went wrong checking that code.');
         btn.disabled = false; btn.textContent = 'Resume session';
@@ -494,7 +505,9 @@ import { firebaseConfig } from "./firebase-config.js";
       sessionDoc(saved.code).get().then(function (snap) {
         if (snap.exists) {
           var data = snap.data() || {};
-          renderTeacherBoard(saved.code, data.className || saved.className || '', saved.teacherKey);
+          maybeSoftReset(saved.code, data).catch(function () {}).then(function () {
+            renderTeacherBoard(saved.code, data.className || saved.className || '', saved.teacherKey);
+          });
         } else {
           clearLS(LS_TEACHER);
         }
@@ -518,15 +531,65 @@ import { firebaseConfig } from "./firebase-config.js";
       var teacherKey = randomCode(2);
       return sessionDoc(code).get().then(function (snap) {
         if (snap.exists) {
+          var data = snap.data() || {};
+          var idleSince = Date.now() - (data.lastActiveAt || data.createdAt || 0);
+          if (idleSince > HARD_EXPIRE_IDLE_MS) {
+            // Nobody's come back to this code in months -- reclaim it
+            // for this new session instead of spending a retry.
+            if (triesLeft <= 0) throw new Error('Could not generate a free code. Try again.');
+            return wipeSession(code).then(function () { return attempt(triesLeft - 1); });
+          }
           if (triesLeft <= 0) throw new Error('Could not generate a free code. Try again.');
           return attempt(triesLeft - 1);
         }
-        return sessionDoc(code).set({ code: code, className: className || '', createdAt: Date.now(), teacherKey: teacherKey }).then(function () {
+        return sessionDoc(code).set({ code: code, className: className || '', createdAt: Date.now(), lastActiveAt: Date.now(), teacherKey: teacherKey }).then(function () {
           return { code: code, teacherKey: teacherKey };
         });
       });
     }
     return attempt(5);
+  }
+
+  // Deletes a session doc and its queue/questions subcollections entirely
+  // -- used both for an explicit "End session" and for reclaiming a code
+  // nobody's used in HARD_EXPIRE_IDLE_MS.
+  function wipeSession(code) {
+    return Promise.all([
+      queueCol(code).get().then(function (snap) {
+        return Promise.all(snap.docs.map(function (d) { return queueCol(code).doc(d.id).delete(); }));
+      }),
+      questionsCol(code).get().then(function (snap) {
+        return Promise.all(snap.docs.map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
+      })
+    ]).then(function () {
+      return sessionDoc(code).delete();
+    });
+  }
+
+  // Clears a session's live, per-class-period state (queue, questions,
+  // announcement, discussion controls) but keeps the session doc, code,
+  // and teacher key intact -- so a teacher reusing one code all semester
+  // gets a clean board each time instead of last class's leftovers.
+  function softResetSession(code) {
+    var now = Date.now();
+    return Promise.all([
+      queueCol(code).get().then(function (snap) {
+        return Promise.all(snap.docs.map(function (d) { return queueCol(code).doc(d.id).delete(); }));
+      }),
+      questionsCol(code).get().then(function (snap) {
+        return Promise.all(snap.docs.map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
+      }),
+      sessionDoc(code).update({ announcement: null, lastActiveAt: now }),
+      sessionDoc(code).update({ discussionMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
+    ]);
+  }
+
+  // Called whenever a teacher reopens an existing session. Resets it first
+  // if it's been idle past SOFT_RESET_IDLE_MS; otherwise a no-op.
+  function maybeSoftReset(code, data) {
+    var idleSince = Date.now() - (data.lastActiveAt || data.createdAt || 0);
+    if (idleSince < SOFT_RESET_IDLE_MS) return Promise.resolve();
+    return softResetSession(code);
   }
 
   // ---------- Teacher: board ----------
@@ -1033,12 +1096,7 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   function endSession(code) {
-    return queueCol(code).get().then(function (snap) {
-      var deletes = snap.docs.map(function (d) { return queueCol(code).doc(d.id).delete(); });
-      return Promise.all(deletes);
-    }).then(function () {
-      return sessionDoc(code).delete();
-    });
+    return wipeSession(code);
   }
 
   // ---------- Student: join ----------

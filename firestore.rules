@@ -31,14 +31,18 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && isValidSession(request.resource.data);
       allow update: if request.auth != null && (
-          // Announcement-only updates
-          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement'])
-           && isValidAnnouncementUpdate(request.resource.data))
+          // Announcement-only updates (lastActiveAt may ride along as an
+          // activity ping when a teacher reopens/resets the session)
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement', 'lastActiveAt'])
+           && isValidAnnouncementUpdate(request.resource.data)
+           && isValidActivityPing(request.resource.data))
           ||
-          // Discussion control updates (discussionMode, questionsVisible, mutedUsers)
+          // Discussion control updates (discussionMode, questionsVisible, mutedUsers),
+          // same lastActiveAt ride-along allowed
           (request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['discussionMode', 'questionsVisible', 'mutedUsers'])
-           && isValidDiscussionUpdate(request.resource.data))
+             .hasOnly(['discussionMode', 'questionsVisible', 'mutedUsers', 'lastActiveAt'])
+           && isValidDiscussionUpdate(request.resource.data)
+           && isValidActivityPing(request.resource.data))
         );
       allow delete: if request.auth != null;
 
@@ -69,11 +73,20 @@ service cloud.firestore {
       // (see the top-level comment), so anyone querying Firestore directly
       // could still read it. There are no accounts in this app, so that
       // tradeoff is accepted deliberately.
-      return data.keys().hasOnly(['code', 'className', 'createdAt', 'teacherKey'])
+      // lastActiveAt tracks when a teacher last had this session open, so
+      // a reused code can be soft-reset (queue/announcement/discussion
+      // state cleared) on the next class period, or fully reclaimed if
+      // it's sat untouched for months.
+      return data.keys().hasOnly(['code', 'className', 'createdAt', 'teacherKey', 'lastActiveAt'])
         && data.code is string && data.code.size() <= 8
         && data.className is string && data.className.size() <= 60
         && data.createdAt is number
-        && data.teacherKey is string && data.teacherKey.size() == 2;
+        && data.teacherKey is string && data.teacherKey.size() == 2
+        && data.lastActiveAt is number;
+    }
+
+    function isValidActivityPing(data) {
+      return !('lastActiveAt' in data) || data.lastActiveAt is number;
     }
 
     function isValidEntry(data) {
