@@ -43,6 +43,10 @@ service cloud.firestore {
              .hasOnly(['discussionMode', 'questionsVisible', 'mutedUsers', 'lastActiveAt'])
            && isValidDiscussionUpdate(request.resource.data)
            && isValidActivityPing(request.resource.data))
+          ||
+          // "Clear hands" marker so students can tell a bulk clear from being helped
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clearedAt'])
+           && request.resource.data.clearedAt is number)
         );
       allow delete: if request.auth != null;
 

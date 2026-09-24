@@ -215,7 +215,8 @@ import { firebaseConfig } from "./firebase-config.js";
     chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h11A1.5 1.5 0 0 1 16 5.5v6A1.5 1.5 0 0 1 14.5 13H8l-4 3.5V13H3.5A1.5 1.5 0 0 1 2 11.5v-6Z"/><path d="M16 7.5h2.5A1.5 1.5 0 0 1 20 9v5a1.5 1.5 0 0 1-1.5 1.5H17l-3 2.5V15h-.5"/></svg>',
     userMute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 10l4 4M21 10l-4 4"/></svg>',
     userUnmute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3.5"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><path d="M17 12l2 2 4-4"/></svg>',
-    layout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="7.5" height="16" rx="1.5"/></svg>'
+    layout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="7.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="7.5" height="16" rx="1.5"/></svg>',
+    qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v0M14 20h3M20 17v4"/></svg>'
   };
 
   function identityLabel(name, seat) {
@@ -584,6 +585,24 @@ import { firebaseConfig } from "./firebase-config.js";
     ]);
   }
 
+  function deleteAllDocs(col, code) {
+    return col(code).get().then(function (snap) {
+      return Promise.all(snap.docs.map(function (d) { return col(code).doc(d.id).delete(); }));
+    });
+  }
+
+  // clearedAt is written first so students can tell "teacher cleared the
+  // queue" apart from "teacher marked me helped" when their ticket vanishes.
+  function clearHands(code) {
+    return sessionDoc(code).update({ clearedAt: Date.now() }).then(function () {
+      return deleteAllDocs(queueCol, code);
+    });
+  }
+
+  function clearQuestions(code) {
+    return deleteAllDocs(questionsCol, code);
+  }
+
   // Called whenever a teacher reopens an existing session. Resets it first
   // if it's been idle past SOFT_RESET_IDLE_MS; otherwise a no-op.
   function maybeSoftReset(code, data) {
@@ -605,6 +624,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
           '<button class="icon-btn" id="discussBtn" title="Discussion mode — click to enable student questions" aria-label="Toggle discussion mode">' + icons.chat + '</button>' +
+          '<button class="icon-btn" id="qrBtn" title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
           '<button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button>' +
           '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
@@ -617,6 +637,7 @@ import { firebaseConfig } from "./firebase-config.js";
               '<h3>Student Questions</h3>' +
               '<div class="discuss-actions">' +
                 '<span class="discuss-count" id="discussCount">0 questions</span>' +
+                '<button class="btn btn-danger-ghost" id="clearQsBtn">Clear questions</button>' +
                 '<button class="icon-btn" id="qVisBtn" title="Hide questions (projector mode)" aria-label="Toggle question visibility"></button>' +
               '</div>' +
             '</div>' +
@@ -646,7 +667,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
       '</div>' +
-      '<div class="board-footer"><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
+      '<div class="board-footer"><button class="btn btn-danger-ghost" id="clearHandsBtn">Clear hands</button><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
     );
 
@@ -668,6 +689,63 @@ import { firebaseConfig } from "./firebase-config.js";
         showToast('Code: ' + code);
       }
     });
+
+    function joinUrl() {
+      return location.origin + location.pathname + '?code=' + encodeURIComponent(code);
+    }
+    var qrOverlay = null;
+    function closeQr() {
+      if (qrOverlay) { qrOverlay.remove(); qrOverlay = null; }
+      document.removeEventListener('keydown', qrKey);
+    }
+    function qrKey(e) { if (e.key === 'Escape') closeQr(); }
+    activeUnsubs.push(closeQr);
+    root.querySelector('#qrBtn').addEventListener('click', function () {
+      if (typeof window.qrcode !== 'function') { showToast('QR code unavailable right now. Share the code instead.'); return; }
+      var svg;
+      try {
+        var qr = window.qrcode(0, 'M');
+        qr.addData(joinUrl());
+        qr.make();
+        svg = qr.createSvgTag(4, 2);
+      } catch (e) { showToast('Could not build the QR code.'); return; }
+      closeQr();
+      qrOverlay = document.createElement('div');
+      qrOverlay.className = 'qr-overlay';
+      qrOverlay.innerHTML =
+        '<div class="qr-card" role="dialog" aria-label="Join by QR code">' +
+          '<div class="qr-img">' + svg + '</div>' +
+          '<div class="qr-code">' + esc(code) + '</div>' +
+          '<div class="qr-hint">Scan to join &middot; ' + esc(joinUrl()) + '</div>' +
+          '<button class="btn btn-ghost" id="qrClose">Close</button>' +
+        '</div>';
+      document.body.appendChild(qrOverlay);
+      qrOverlay.addEventListener('click', function (e) { if (e.target === qrOverlay) closeQr(); });
+      qrOverlay.querySelector('#qrClose').addEventListener('click', closeQr);
+      document.addEventListener('keydown', qrKey);
+    });
+
+    function confirmTap(btn, label, action) {
+      btn.addEventListener('click', function () {
+        if (btn.dataset.confirm !== '1') {
+          btn.dataset.confirm = '1';
+          btn.textContent = 'Tap again to confirm';
+          setTimeout(function () { btn.dataset.confirm = ''; btn.textContent = label; }, 3000);
+          return;
+        }
+        btn.dataset.confirm = '';
+        btn.disabled = true; btn.textContent = 'Clearing…';
+        action().then(function () {
+          showToast('Cleared');
+        }).catch(function () {
+          showToast('Could not clear. Try again.');
+        }).then(function () {
+          btn.disabled = false; btn.textContent = label;
+        });
+      });
+    }
+    confirmTap(root.querySelector('#clearHandsBtn'), 'Clear hands', function () { return clearHands(code); });
+    confirmTap(root.querySelector('#clearQsBtn'), 'Clear questions', function () { return clearQuestions(code); });
 
     root.querySelector('#endBtn').addEventListener('click', function () {
       var btn = this;
@@ -1099,6 +1177,15 @@ import { firebaseConfig } from "./firebase-config.js";
     return wipeSession(code);
   }
 
+  // A scanned QR / shared link carries ?code=ABCD. Returns a valid code or ''.
+  function readLinkCode() {
+    var raw = '';
+    try { raw = (new URLSearchParams(location.search).get('code') || '').trim().toUpperCase(); } catch (e) { return ''; }
+    if (raw.length !== 4) return '';
+    for (var i = 0; i < 4; i++) if (CODE_CHARS.indexOf(raw[i]) === -1) return '';
+    return raw;
+  }
+
   // ---------- Student: join ----------
   function renderStudentJoin() {
     setTopbar('student');
@@ -1128,6 +1215,12 @@ import { firebaseConfig } from "./firebase-config.js";
     if (saved && saved.name) root.querySelector('#joinName').value = saved.name;
     if (saved && saved.seat) root.querySelector('#joinSeat').value = saved.seat;
     if (saved && saved.code) root.querySelector('#joinCode').value = saved.code;
+    var linkCode = readLinkCode();
+    if (linkCode) {
+      root.querySelector('#joinCode').value = linkCode;
+      var nameEl = root.querySelector('#joinName');
+      if (nameEl) nameEl.focus();
+    }
 
     function setErr(msg) {
       var e = root.querySelector('#err');
@@ -1352,6 +1445,26 @@ import { firebaseConfig } from "./firebase-config.js";
       document.addEventListener('keydown', keyHandler);
     }
 
+    var studentClearedAt = null;
+    var sessLoaded = false;
+    var ticketBaseline;
+
+    function renderCleared() {
+      teardownKeys();
+      inner.innerHTML =
+        '<div class="ticket">' +
+          '<div class="called-flash">' +
+            '<h2>Queue cleared</h2>' +
+            '<p>Your teacher cleared the queue. Raise your hand again if you still need help.</p>' +
+          '</div>' +
+        '</div>';
+      var saved = loadLS(LS_STUDENT) || {};
+      saved.ticketId = null;
+      saveLS(LS_STUDENT, saved);
+      myTicketId = null;
+      setTimeout(function () { renderPad(0); refreshCount(); }, 3000);
+    }
+
     function renderCalled() {
       teardownKeys();
       inner.innerHTML =
@@ -1381,6 +1494,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
     function renderTicketed() {
       teardownKeys();
+      ticketBaseline = sessLoaded ? studentClearedAt : undefined;
       inner.innerHTML =
         '<div class="ticket" id="ticketCard">' +
           '<div class="eyebrow">' + esc(className || 'Your class') + '</div>' +
@@ -1420,12 +1534,19 @@ import { firebaseConfig } from "./firebase-config.js";
       // leaving a ghost ticket visible on the teacher's board forever.
       // A doc-level listener on the exact path is immediately consistent.
       var ticketSeen = false;
+      var watchedId = myTicketId;
       var ticketDocUnsub = queueCol(code).doc(myTicketId).onSnapshot(function (docSnap) {
         if (docSnap.exists) {
           ticketSeen = true;
         } else if (ticketSeen) {
-          // Doc existed and is now gone — teacher removed us.
-          renderCalled();
+          // Doc existed and is now gone — teacher removed us. Give the
+          // session doc's clearedAt a moment to arrive so a bulk clear
+          // isn't mistaken for "you've been called".
+          setTimeout(function () {
+            if (myTicketId !== watchedId) return;
+            if (ticketBaseline !== undefined && studentClearedAt !== ticketBaseline) renderCleared();
+            else renderCalled();
+          }, 700);
         }
         // If !ticketSeen && !docSnap.exists: listener fired before the
         // create propagated (shouldn't happen on a doc watch, but guard it).
@@ -1466,6 +1587,12 @@ import { firebaseConfig } from "./firebase-config.js";
       var data = snap.data() || {};
       updateBanner(data.announcement || null);
 
+      studentClearedAt = data.clearedAt || null;
+      if (!sessLoaded) {
+        sessLoaded = true;
+        if (ticketBaseline === undefined) ticketBaseline = studentClearedAt;
+      }
+
       // Discussion mode
       var uid = auth.currentUser && auth.currentUser.uid;
       studentDiscussionMode = !!data.discussionMode;
@@ -1494,7 +1621,8 @@ import { firebaseConfig } from "./firebase-config.js";
   function boot() {
     mount('<div class="card"><h2>Connecting&hellip;</h2><div class="sub">Setting up your session.</div></div>');
     waitForAuth().then(function () {
-      renderLanding();
+      if (readLinkCode()) renderStudentJoin();
+      else renderLanding();
     }).catch(function () {
       mount('<div class="card"><h2>Can&rsquo;t connect</h2><div class="sub">Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.</div></div>');
     });
