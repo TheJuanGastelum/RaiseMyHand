@@ -604,6 +604,22 @@ import { firebaseConfig } from "./firebase-config.js";
     });
   }
 
+  // Client-side stand-in for a Firestore TTL policy: removes queue entries
+  // and questions whose expireAt has passed. Runs when a teacher opens a
+  // board or a student joins, best effort.
+  function sweepExpired(code) {
+    var now = Date.now();
+    function sweep(col) {
+      return col(code).get().then(function (snap) {
+        return Promise.all(snap.docs.filter(function (d) {
+          var e = (d.data() || {}).expireAt;
+          return e && typeof e.toMillis === 'function' && e.toMillis() < now;
+        }).map(function (d) { return col(code).doc(d.id).delete(); }));
+      });
+    }
+    return Promise.all([sweep(queueCol), sweep(questionsCol)]).catch(function () {});
+  }
+
   function clearQuestions(code) {
     return deleteAllDocs(questionsCol, code);
   }
@@ -619,6 +635,7 @@ import { firebaseConfig } from "./firebase-config.js";
   // ---------- Teacher: board ----------
   function renderTeacherBoard(code, className, teacherKey) {
     setTopbar('teacher');
+    sweepExpired(code);
     var root = mount(
       '<div class="board-header">' +
         '<div class="board-title">' +
@@ -1248,6 +1265,7 @@ import { firebaseConfig } from "./firebase-config.js";
           return;
         }
         var data = snap.data() || {};
+        sweepExpired(code);
         saveLS(LS_STUDENT, { code: code, className: data.className || '', name: name, seat: seat, ticketId: null });
         renderStudentWait(code, data.className || '', name, seat);
       }).catch(function () {
