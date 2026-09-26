@@ -3,7 +3,8 @@
 A browser-based, retro-pixel-art game that teaches electrical engineering
 fundamentals through interactive circuit puzzles, structured like a
 progressive university EE curriculum: Ohm's Law → series circuits →
-parallel circuits → Kirchhoff's Current Law → capacitors/RC transients.
+parallel circuits → Kirchhoff's Current Law → capacitors/RC transients →
+AC power (P/Q/S, power factor) → three-phase power → Laplace transforms.
 
 No build step, no dependencies beyond a static file server. This is a
 standalone project — it does not share hosting, deployment, or any code

@@ -21,7 +21,8 @@
 //   puzzleType: string     — one of the keys in PuzzleEngine.types (see
 //                            js/puzzle-engine.js): "ohms-law",
 //                            "series-circuit", "parallel-circuit",
-//                            "kirchhoff-current", "rc-time-constant".
+//                            "kirchhoff-current", "rc-time-constant",
+//                            "ac-power", "three-phase", "laplace-transform".
 //   config: object         — parameters for that puzzle type. Each type
 //                            documents its own config shape at the top of
 //                            its entry in puzzle-engine.js. This is the
@@ -140,5 +141,77 @@ window.DEFAULT_LEVELS = [
     config: { R: 10, C: 5, min: 0, max: 100, step: 0.5 },
     tolerance: 0.05,
     hint: "τ = R × C = 10 × 5.",
+  },
+  {
+    id: "lvl_power_1",
+    order: 8,
+    topic: "AC Power",
+    title: "Real, Reactive, and Apparent Power",
+    concept:
+      "Once current and voltage are sinusoids instead of steady DC, \"power\" splits into three related numbers. If the load's current lags the voltage by an angle θ (as it does for anything inductive — motors, transformers, most real loads):\n\nApparent power:  S = V·I  (volt-amps, VA — what the source actually has to supply)\nReal power:  P = V·I·cos θ  (watts, W — what actually does work: heat, light, torque)\nReactive power:  Q = V·I·sin θ  (VAR — energy sloshing in and out of magnetic/electric fields, doing no net work)\n\nThe phasor diagram below shows why: V and I aren't aligned when θ ≠ 0, and P is literally the projection of S onto the V axis.\n\nFind the real power P delivered to the load.",
+    puzzleType: "ac-power",
+    config: { V: 120, I: 10, angleDeg: 30, find: "P", min: 0, max: 1500, step: 1 },
+    tolerance: 0.05,
+    hint: "P = V·I·cos(θ) = 120 × 10 × cos(30°).",
+  },
+  {
+    id: "lvl_power_2",
+    order: 9,
+    topic: "AC Power",
+    title: "Power Factor",
+    concept:
+      "Power factor is just cos θ — the fraction of the apparent power (S) that's actually real power (P). A power factor of 1.0 means every volt-amp the source supplies does useful work; a low power factor (a big, inductive motor with no correction) means the source and wiring have to be sized for far more current than the load's real output would suggest.\n\nThis is why utilities charge industrial customers for poor power factor: the current — and the wiring, transformers, and losses that come with it — is set by S = V·I, not by P.\n\nFind the power factor for this load.",
+    puzzleType: "ac-power",
+    config: { V: 240, I: 8, angleDeg: 45, find: "pf", min: 0, max: 1, step: 0.01 },
+    tolerance: 0.03,
+    hint: "pf = cos(θ) = cos(45°).",
+  },
+  {
+    id: "lvl_3phase_1",
+    order: 10,
+    topic: "Three-Phase Power",
+    title: "Wye: Line vs. Phase Voltage",
+    concept:
+      "Three-phase power sends three sinusoidal voltages 120° apart down three lines instead of one, which is why almost all power generation and industrial distribution uses it — it delivers constant instantaneous power (unlike single-phase, which pulses) and needs less conductor for the same power.\n\nIn a Y (wye) connection, each phase winding is tied to a common neutral point. The voltage between any two lines (line-to-line) isn't just the phase voltage doubled — it's the phasor sum of two phase voltages 120° apart, which works out to:\n\nV_line = √3 × V_phase ≈ 1.732 × V_phase\n\nThe line current, though, is the same as the phase current in a wye system — there's only one path for it to take.\n\nFind the line-to-line voltage for the wye source shown.",
+    puzzleType: "three-phase",
+    config: { system: "wye", V_phase: 120, I_phase: 20, cosPhi: 0.9, find: "V_line", min: 0, max: 300, step: 1 },
+    tolerance: 0.05,
+    hint: "V_line = √3 × V_phase = 1.732 × 120.",
+  },
+  {
+    id: "lvl_3phase_2",
+    order: 11,
+    topic: "Three-Phase Power",
+    title: "Total Power in a Balanced System",
+    concept:
+      "For a balanced three-phase load (all three phases identical), the total real power delivered is:\n\nP_total = √3 × V_line × I_line × cos θ\n\nNotice this uses line quantities, not phase quantities — which is convenient, because line voltage and line current are exactly what you'd measure with a meter clipped onto the incoming feed, no need to know whether the load inside is wired wye or delta.\n\nThis wye-connected load has phase voltage 120 V and phase current 15 A at a power factor of 0.85. Work out the line quantities first, then the total power.",
+    puzzleType: "three-phase",
+    config: { system: "wye", V_phase: 120, I_phase: 15, cosPhi: 0.85, find: "P_total", min: 0, max: 8000, step: 10 },
+    tolerance: 0.05,
+    hint: "V_line = √3×120, I_line = 15 (wye), P = √3 × V_line × I_line × 0.85.",
+  },
+  {
+    id: "lvl_laplace_1",
+    order: 12,
+    topic: "Laplace Transforms",
+    title: "Transforming an Exponential",
+    concept:
+      "Laplace transforms turn differential equations (the natural language of circuits with L's and C's) into algebra. Instead of solving in the time domain, you transform into the s-domain, solve with algebra, and transform back.\n\nOne of the most useful pairs — because it's exactly the shape of a capacitor discharging or an inductor's current decaying — is the exponential:\n\nℒ{ e^(−at) } = 1 / (s + a)\n\nThe time-domain curve below decays as e^(−at). Evaluate its Laplace transform F(s) at the given value of s.",
+    puzzleType: "laplace-transform",
+    config: { kind: "exp", a: 2, s: 3, min: 0, max: 2, step: 0.01 },
+    tolerance: 0.05,
+    hint: "F(s) = 1/(s + a) = 1/(3 + 2).",
+  },
+  {
+    id: "lvl_laplace_2",
+    order: 13,
+    topic: "Laplace Transforms",
+    title: "Transforming a Ramp",
+    concept:
+      "A ramp, f(t) = t, is what you get integrating a constant — like the current build-up in an inductor driven by a fixed voltage before anything else limits it. Its transform is:\n\nℒ{ t } = 1 / s²\n\nNote it falls off faster (as 1/s²) than the unit step's 1/s — the transform 'remembers' that a ramp keeps growing, so it needs a stronger low-s dependence to represent it.\n\nEvaluate F(s) for the ramp shown, at the given s.",
+    puzzleType: "laplace-transform",
+    config: { kind: "ramp", s: 2, min: 0, max: 2, step: 0.01 },
+    tolerance: 0.05,
+    hint: "F(s) = 1/s² = 1/(2²) = 1/4.",
   },
 ];

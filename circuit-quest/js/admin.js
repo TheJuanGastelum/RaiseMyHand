@@ -46,6 +46,33 @@ const CONFIG_SCHEMAS = {
     { key: "max", label: "Slider max", type: "number" },
     { key: "step", label: "Slider step", type: "number" },
   ],
+  "ac-power": [
+    { key: "V", label: "Voltage V (rms)", type: "number" },
+    { key: "I", label: "Current I (rms)", type: "number" },
+    { key: "angleDeg", label: "Angle θ (degrees, current lags voltage)", type: "number" },
+    { key: "find", label: "Find", type: "select", options: ["P", "Q", "S", "pf"] },
+    { key: "min", label: "Slider min", type: "number" },
+    { key: "max", label: "Slider max", type: "number" },
+    { key: "step", label: "Slider step", type: "number" },
+  ],
+  "three-phase": [
+    { key: "system", label: "System", type: "select", options: ["wye", "delta"] },
+    { key: "V_phase", label: "Phase Voltage", type: "number" },
+    { key: "I_phase", label: "Phase Current", type: "number" },
+    { key: "cosPhi", label: "Power factor (cos φ)", type: "number" },
+    { key: "find", label: "Find", type: "select", options: ["V_line", "I_line", "P_total"] },
+    { key: "min", label: "Slider min", type: "number" },
+    { key: "max", label: "Slider max", type: "number" },
+    { key: "step", label: "Slider step", type: "number" },
+  ],
+  "laplace-transform": [
+    { key: "kind", label: "Function", type: "select", options: ["step", "ramp", "exp"] },
+    { key: "a", label: "Decay rate a (exponential only)", type: "number" },
+    { key: "s", label: "Evaluate at s =", type: "number" },
+    { key: "min", label: "Slider min", type: "number" },
+    { key: "max", label: "Slider max", type: "number" },
+    { key: "step", label: "Slider step", type: "number" },
+  ],
 };
 
 let editingId = null;

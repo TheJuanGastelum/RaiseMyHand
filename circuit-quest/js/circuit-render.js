@@ -127,6 +127,73 @@ const CircuitRender = {
     ctx.font = (size || 9) + "px monospace";
     ctx.fillText(str, x, y);
   },
+
+  acSource(ctx, x, y, r) {
+    r = r || 12;
+    ctx.strokeStyle = PALETTE.battery;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    for (let i = -r * 0.7; i <= r * 0.7; i += 1) {
+      const px = x + i;
+      const py = y - Math.sin((i / (r * 0.7)) * Math.PI) * (r * 0.4);
+      if (i === -r * 0.7) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  },
+
+  // Arrow from (x,y) at angleDeg (0 = pointing right, CCW positive) with
+  // given pixel length. Used for phasor diagrams.
+  phasor(ctx, x, y, angleDeg, length, color, label) {
+    const rad = (-angleDeg * Math.PI) / 180;
+    const ex = x + Math.cos(rad) * length;
+    const ey = y + Math.sin(rad) * length;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    const headLen = 5;
+    const headAngle = Math.PI / 7;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen * Math.cos(rad - headAngle), ey - headLen * Math.sin(rad - headAngle));
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen * Math.cos(rad + headAngle), ey - headLen * Math.sin(rad + headAngle));
+    ctx.stroke();
+    if (label) {
+      ctx.fillStyle = color;
+      ctx.font = "8px monospace";
+      ctx.fillText(label, ex + (Math.cos(rad) >= 0 ? 4 : -24), ey - 2);
+    }
+  },
+
+  // Small time-domain plot of a function sampled over [0, tMax].
+  plot(ctx, x, y, w, h, fn, tMax, color) {
+    ctx.strokeStyle = PALETTE.textDim;
+    ctx.strokeRect(x, y, w, h);
+    let maxVal = 0;
+    const samples = [];
+    for (let px = 0; px <= w; px++) {
+      const t = (px / w) * tMax;
+      const v = fn(t);
+      samples.push(v);
+      maxVal = Math.max(maxVal, Math.abs(v));
+    }
+    if (maxVal === 0) maxVal = 1;
+    ctx.strokeStyle = color || PALETTE.good;
+    ctx.beginPath();
+    samples.forEach((v, px) => {
+      const py = y + h - (v / maxVal) * (h - 4) - 2;
+      if (px === 0) ctx.moveTo(x + px, py);
+      else ctx.lineTo(x + px, py);
+    });
+    ctx.stroke();
+  },
 };
 
 window.CircuitRender = CircuitRender;

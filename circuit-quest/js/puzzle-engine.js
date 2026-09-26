@@ -195,6 +195,132 @@ const PuzzleEngine = {
       },
     },
 
+    "ac-power": {
+      // config: { V, I, angleDeg, find: "P"|"Q"|"S"|"pf" }
+      // V, I are RMS magnitudes; angleDeg is the angle current lags voltage
+      // (the load's impedance angle). P = real (W), Q = reactive (VAR),
+      // S = apparent (VA), pf = power factor (unitless, cos(angleDeg)).
+      unit(config) {
+        return { P: "W", Q: "VAR", S: "VA", pf: "" }[config.find];
+      },
+      label(config) {
+        return { P: "Real Power (P)", Q: "Reactive Power (Q)", S: "Apparent Power (S)", pf: "Power Factor" }[config.find];
+      },
+      answer(config) {
+        const rad = (config.angleDeg * Math.PI) / 180;
+        const { V, I, find } = config;
+        if (find === "P") return V * I * Math.cos(rad);
+        if (find === "Q") return V * I * Math.sin(rad);
+        if (find === "S") return V * I;
+        return Math.cos(rad); // pf
+      },
+      givenText(config) {
+        return [`V = ${config.V} V (rms)`, `I = ${config.I} A (rms)`, `θ = ${config.angleDeg}°`];
+      },
+      render(ctx, w, h, config, guess, t) {
+        R.clear(ctx, w, h);
+        const srcX = 50,
+          cy = 70;
+        R.acSource(ctx, srcX, cy, 14);
+        R.wire(ctx, srcX + 14, cy - 20, srcX + 90, cy - 20, true, t * 6);
+        R.resistor(ctx, srcX + 130, cy - 20, 60, "load");
+        R.wire(ctx, srcX + 160, cy - 20, w - 40, cy - 20, false);
+        R.wire(ctx, w - 40, cy - 20, w - 40, cy + 20, false);
+        R.wire(ctx, srcX + 14, cy + 20, w - 40, cy + 20, true, -t * 6);
+        R.wire(ctx, srcX - 14, cy - 20, srcX - 14, cy + 20, false);
+
+        const px = w / 2,
+          py = h - 55,
+          len = 40;
+        R.text(ctx, 14, h - 100, "Phasor diagram:", R.palette.textDim, 8);
+        R.phasor(ctx, px, py, 0, len, R.palette.node, "V");
+        R.phasor(ctx, px, py, -config.angleDeg, len * 0.8, R.palette.good, "I");
+        R.text(ctx, px - 10, py + 16, `θ = ${config.angleDeg}°`, R.palette.textDim, 8);
+      },
+    },
+
+    "three-phase": {
+      // config: { system: "wye"|"delta", V_phase, I_phase, cosPhi, find: "V_line"|"I_line"|"P_total" }
+      unit(config) {
+        return { V_line: "V", I_line: "A", P_total: "W" }[config.find];
+      },
+      label(config) {
+        return { V_line: "Line Voltage", I_line: "Line Current", P_total: "Total Power" }[config.find];
+      },
+      answer(config) {
+        const sqrt3 = Math.sqrt(3);
+        const { system, V_phase, I_phase, cosPhi, find } = config;
+        const V_line = system === "wye" ? V_phase * sqrt3 : V_phase;
+        const I_line = system === "wye" ? I_phase : I_phase * sqrt3;
+        if (find === "V_line") return V_line;
+        if (find === "I_line") return I_line;
+        return sqrt3 * V_line * I_line * cosPhi;
+      },
+      givenText(config) {
+        return [
+          `System = ${config.system === "wye" ? "Wye (Y)" : "Delta (Δ)"}`,
+          `V_phase = ${config.V_phase} V`,
+          `I_phase = ${config.I_phase} A`,
+          `cos φ = ${config.cosPhi}`,
+        ];
+      },
+      render(ctx, w, h, config, guess, t) {
+        R.clear(ctx, w, h);
+        const cx = w / 2,
+          cy = 60,
+          radius = 34;
+        const colors = [R.palette.battery, R.palette.resistor, R.palette.node];
+        const labels = ["A", "B", "C"];
+        for (let i = 0; i < 3; i++) {
+          const angle = (i * 120 * Math.PI) / 180 - Math.PI / 2;
+          const sx = cx + Math.cos(angle) * radius;
+          const sy = cy + Math.sin(angle) * radius;
+          R.node(ctx, sx, sy, labels[i], false);
+          ctx.fillStyle = colors[i];
+          ctx.font = "8px monospace";
+          R.plot(ctx, sx - 12, sy + 10, 24, 14, (tt) => Math.sin(tt * 6 - (i * 2 * Math.PI) / 3), 2, colors[i]);
+          const ex = w - 60;
+          const ey = 30 + i * 30;
+          R.wire(ctx, sx, sy, ex, ey, true, t * 4 + i * 20);
+          R.text(ctx, ex + 4, ey + 3, labels[i], colors[i], 8);
+        }
+        if (config.system === "wye") {
+          R.node(ctx, cx, cy, "N", true);
+        } else {
+          R.text(ctx, cx - 14, cy + radius + 14, "Δ", R.palette.textDim, 10);
+        }
+        R.text(ctx, 8, h - 10, `${config.system === "wye" ? "Wye" : "Delta"} source → 3-phase load`, R.palette.textDim, 8);
+      },
+    },
+
+    "laplace-transform": {
+      // config: { kind: "step"|"ramp"|"exp", a (for exp only), s }
+      // Evaluates the standard Laplace transform pair at the given s.
+      unit: () => "",
+      label: () => "F(s)",
+      answer(config) {
+        const { kind, a, s } = config;
+        if (kind === "step") return 1 / s;
+        if (kind === "ramp") return 1 / (s * s);
+        return 1 / (s + a); // exp
+      },
+      givenText(config) {
+        const names = { step: "f(t) = u(t)", ramp: "f(t) = t", exp: `f(t) = e^(-${config.a}t)` };
+        const out = [names[config.kind], `s = ${config.s}`];
+        if (config.kind === "exp") out.push(`a = ${config.a}`);
+        return out;
+      },
+      render(ctx, w, h, config, guess, t) {
+        R.clear(ctx, w, h);
+        const fn =
+          config.kind === "step" ? () => 1 : config.kind === "ramp" ? (tt) => tt : (tt) => Math.exp(-config.a * tt);
+        R.plot(ctx, 30, 20, w - 60, 80, fn, 5, R.palette.good);
+        R.text(ctx, 30, 112, "f(t)  (time domain)", R.palette.textDim, 8);
+        R.text(ctx, w / 2 - 50, 140, "ℒ{ f(t) } = F(s)", R.palette.node, 10);
+        R.text(ctx, w / 2 - 70, 160, `evaluate F(s) at s = ${config.s}`, R.palette.textDim, 8);
+      },
+    },
+
     "rc-time-constant": {
       unit: () => "µs",
       label: () => "Time Constant (τ)",
