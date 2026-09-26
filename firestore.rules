@@ -1,24 +1,23 @@
 rules_version = '2';
 
 // Security model:
-// - Anyone can READ a session and its queue (a teacher's board and a
-//   student's ticket both need to see the live list without necessarily
-//   having written to it).
-// - Only a signed-in visitor (anonymous auth counts) may WRITE, and only
-//   documents that match the shape the app actually creates. This keeps
-//   out drive-by bots that find the URL but never load the app's JS,
-//   without requiring students or teachers to ever see a login screen.
-// - Queue entries are never updated — the app only ever creates or deletes
-//   them, so update stays closed there.
-// - A session document MAY be updated, but only to post/edit/clear its
-//   `announcement` field (the teacher's on-screen note to students).
-//   Everything else about a session (code, className, createdAt) is
-//   immutable after creation.
-// - Feedback notes are write-only from the app: anyone signed in
-//   (anonymous auth counts) can submit one, but nothing can read, edit,
-//   or delete them back through the client -- they're only visible to
-//   whoever has direct Firestore/console access to the project, so one
-//   student can't browse what other people wrote.
+// - Anyone can READ a session, its queue, questions, and polls: a teacher's
+//   board and a student's ticket both need the live list without an account.
+//   The join code is the only thing gating those reads.
+// - Every WRITE needs a signed-in visitor (anonymous auth counts). Students
+//   may only create their own ticket / question / vote / roster entry, keyed
+//   to their own uid, and remove their own ticket.
+// - Teacher powers (edit or end the session, clear the queue, mark helped,
+//   moderate questions, run polls, read the roster) require being the
+//   session's owner: either its creator, or a co-host who proved they know
+//   the session's private key. The key lives in sessions/{code}/private/key,
+//   which no client can read; the rules compare what a co-host sends against
+//   it, so it never leaves the server.
+// - The roster and individual poll votes are readable only by the owner
+//   (and a voter can read their own vote).
+// - A session left untouched for 75 days can be deleted by anyone, so its
+//   4-character code can be reused.
+// - Feedback notes are write-only from the app.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -28,46 +27,94 @@ service cloud.firestore {
     }
 
     match /sessions/{code} {
+
+      function sess() {
+        return get(/databases/$(database)/documents/sessions/$(code)).data;
+      }
+      function isCreator() {
+        return request.auth != null && request.auth.uid == sess().get('creatorUid', '');
+      }
+      function isCoHost() {
+        return request.auth != null
+          && exists(/databases/$(database)/documents/sessions/$(code)/owners/$(request.auth.uid))
+          && get(/databases/$(database)/documents/sessions/$(code)/owners/$(request.auth.uid)).data.sid == sess().createdAt;
+      }
+      function isOwner() {
+        return isCreator() || isCoHost();
+      }
+      function isStale() {
+        // 75 days in milliseconds
+        return request.time.toMillis() - sess().get('lastActiveAt', sess().createdAt) > 6480000000;
+      }
+      function notBlocked() {
+        return !(request.auth.uid in sess().get('blocked', {}));
+      }
+
       allow read: if true;
-      allow create: if request.auth != null && isValidSession(request.resource.data);
-      allow update: if request.auth != null && (
-          // Announcement-only updates (lastActiveAt may ride along as an
-          // activity ping when a teacher reopens/resets the session)
+      allow create: if request.auth != null
+        && request.resource.data.creatorUid == request.auth.uid
+        && isValidSession(request.resource.data);
+      allow update: if isOwner() && (
+          // Announcement (lastActiveAt may ride along as an activity ping)
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['announcement', 'lastActiveAt'])
            && isValidAnnouncementUpdate(request.resource.data)
            && isValidActivityPing(request.resource.data))
           ||
-          // Discussion control updates (discussionMode, questionsVisible, mutedUsers),
-          // same lastActiveAt ride-along allowed
+          // Feature toggles and question controls
           (request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['discussionMode', 'questionsVisible', 'mutedUsers', 'lastActiveAt'])
-           && isValidDiscussionUpdate(request.resource.data)
+             .hasOnly(['discussionMode', 'rosterMode', 'pollsMode', 'questionsVisible', 'mutedUsers', 'lastActiveAt'])
+           && isValidModeUpdate(request.resource.data)
            && isValidActivityPing(request.resource.data))
           ||
-          // "Clear hands" marker so students can tell a bulk clear from being helped
+          // "Clear hands" marker
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clearedAt'])
            && request.resource.data.clearedAt is number)
           ||
-          // Per-session block list (uid -> label); dies with the session doc
+          // Per-session block list (uid -> label)
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked'])
            && request.resource.data.blocked is map)
+          ||
+          // Currently open poll
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pollId'])
+           && (request.resource.data.pollId == null || request.resource.data.pollId is string))
         );
-      allow delete: if request.auth != null;
+      allow delete: if isOwner() || isStale();
+
+      match /private/{docId} {
+        allow read: if false;
+        allow create, update: if request.auth != null
+          && docId == 'key'
+          && request.auth.uid == sess().get('creatorUid', '')
+          && request.resource.data.keys().hasOnly(['secret'])
+          && request.resource.data.secret is string
+          && request.resource.data.secret.size() >= 8
+          && request.resource.data.secret.size() <= 32;
+        allow delete: if isOwner() || isStale();
+      }
+
+      match /owners/{uid} {
+        allow read: if request.auth != null && (request.auth.uid == uid || isOwner() || isStale());
+        allow create, update: if request.auth != null
+          && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['secret', 'sid'])
+          && request.resource.data.sid == sess().createdAt
+          && request.resource.data.secret == get(/databases/$(database)/documents/sessions/$(code)/private/key).data.secret;
+        allow delete: if request.auth != null && (request.auth.uid == uid || isOwner() || isStale());
+      }
 
       match /queue/{entryId} {
         allow read: if true;
         // One hand per device per session: the ticket id must be the
-        // creator's own uid, and update is closed so it can't be re-created
-        // over. Blocked uids (see session.blocked) can't raise at all.
+        // creator's own uid. Blocked uids can't raise at all.
         allow create: if request.auth != null
           && request.auth.uid == entryId
           && isValidEntry(request.resource.data)
-          && !(request.auth.uid in get(/databases/$(database)/documents/sessions/$(code)).data.get('blocked', {}));
-        // A ticket can only be flagged helped / waiting (teacher's undo window).
-        allow update: if request.auth != null
+          && notBlocked();
+        // Owner flags a ticket helped / waiting (undo window).
+        allow update: if isOwner()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
           && request.resource.data.status in ['waiting', 'helped'];
-        allow delete: if request.auth != null;
+        allow delete: if (request.auth != null && request.auth.uid == entryId) || isOwner() || isStale();
       }
 
       match /questions/{questionId} {
@@ -75,33 +122,69 @@ service cloud.firestore {
         allow create: if request.auth != null
           && isValidQuestion(request.resource.data)
           && request.resource.data.authorId == request.auth.uid
-          && get(/databases/$(database)/documents/sessions/$(code)).data.discussionMode == true
-          && !(request.auth.uid in get(/databases/$(database)/documents/sessions/$(code)).data.get('blocked', {}));
-        allow update: if request.auth != null
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
-          && request.resource.data.status in ['active', 'skipped'];
-        allow delete: if request.auth != null;
+          && sess().get('discussionMode', false) == true
+          && notBlocked();
+        allow update: if request.auth != null && (
+            // Owner answers / skips
+            (isOwner()
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+             && request.resource.data.status in ['active', 'skipped'])
+            ||
+            // Anyone in the room can add their own +1
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvoters'])
+             && request.resource.data.upvoters is map
+             && request.resource.data.upvoters.diff(resource.data.get('upvoters', {})).affectedKeys().hasOnly([request.auth.uid])
+             && notBlocked())
+          );
+        allow delete: if isOwner() || isStale();
+      }
+
+      match /roster/{uid} {
+        allow read: if isOwner();
+        allow create, update: if request.auth != null
+          && request.auth.uid == uid
+          && sess().get('rosterMode', false) == true
+          && notBlocked()
+          && isValidRoster(request.resource.data);
+        allow delete: if (request.auth != null && request.auth.uid == uid) || isOwner() || isStale();
+      }
+
+      match /polls/{pollId} {
+        allow read: if true;
+        allow create: if isOwner() && isValidPoll(request.resource.data);
+        allow update: if isOwner()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'results'])
+          && request.resource.data.status in ['open', 'closed'];
+        allow delete: if isOwner() || isStale();
+
+        match /votes/{uid} {
+          allow read: if request.auth != null && (request.auth.uid == uid || isOwner());
+          allow create, update: if request.auth != null
+            && request.auth.uid == uid
+            && notBlocked()
+            && get(/databases/$(database)/documents/sessions/$(code)/polls/$(pollId)).data.status == 'open'
+            && request.resource.data.keys().hasOnly(['choice', 'expireAt'])
+            && request.resource.data.choice is number
+            && request.resource.data.choice >= 0
+            && request.resource.data.choice < get(/databases/$(database)/documents/sessions/$(code)/polls/$(pollId)).data.options.size()
+            && (!('expireAt' in request.resource.data) || request.resource.data.expireAt is timestamp);
+          allow delete: if isOwner() || isStale();
+        }
       }
     }
 
     function isValidSession(data) {
-      // teacherKey is a short, private "reopen key" the app pairs with the
-      // public 4-character join code so a student who only has the join
-      // code can't claim someone else's teacher board. It's a casual
-      // deterrent, not a secret -- this collection is publicly readable
-      // (see the top-level comment), so anyone querying Firestore directly
-      // could still read it. There are no accounts in this app, so that
-      // tradeoff is accepted deliberately.
-      // lastActiveAt tracks when a teacher last had this session open, so
-      // a reused code can be soft-reset (queue/announcement/discussion
-      // state cleared) on the next class period, or fully reclaimed if
-      // it's sat untouched for months.
-      return data.keys().hasOnly(['code', 'className', 'createdAt', 'teacherKey', 'lastActiveAt'])
+      // The session doc is public. It holds no secrets: the private key that
+      // lets a co-host reopen a board lives in sessions/{code}/private/key.
+      // lastActiveAt tracks when a teacher last had this session open, so a
+      // reused code can be soft-reset on the next class period, or reclaimed
+      // if it's sat untouched for months.
+      return data.keys().hasOnly(['code', 'className', 'createdAt', 'lastActiveAt', 'creatorUid'])
         && data.code is string && data.code.size() <= 8
         && data.className is string && data.className.size() <= 60
         && data.createdAt is number
-        && data.teacherKey is string && data.teacherKey.size() == 2
-        && data.lastActiveAt is number;
+        && data.lastActiveAt is number
+        && data.creatorUid is string;
     }
 
     function isValidActivityPing(data) {
@@ -122,8 +205,19 @@ service cloud.firestore {
         && data.status == 'waiting';
     }
 
-    function isValidDiscussionUpdate(data) {
+    function isValidRoster(data) {
+      return data.keys().hasOnly(['name', 'seat', 'joinedAt', 'expireAt'])
+        && data.keys().hasAny(['name', 'seat'])
+        && (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() <= 40))
+        && (!('seat' in data) || (data.seat is string && data.seat.size() > 0 && data.seat.size() <= 12))
+        && data.joinedAt is number
+        && (!('expireAt' in data) || data.expireAt is timestamp);
+    }
+
+    function isValidModeUpdate(data) {
       return (!('discussionMode' in data) || data.discussionMode is bool)
+        && (!('rosterMode' in data) || data.rosterMode is bool)
+        && (!('pollsMode' in data) || data.pollsMode is bool)
         && (!('questionsVisible' in data) || data.questionsVisible is bool)
         && (!('mutedUsers' in data) || data.mutedUsers is map);
     }
@@ -141,6 +235,15 @@ service cloud.firestore {
         && (!('authorSeat' in data) || (data.authorSeat is string && data.authorSeat.size() <= 12))
         && data.status == 'active'
         && data.createdAt is number;
+    }
+
+    function isValidPoll(data) {
+      return data.keys().hasOnly(['question', 'options', 'status', 'createdAt', 'results', 'expireAt'])
+        && data.question is string && data.question.size() > 0 && data.question.size() <= 200
+        && data.options is list && data.options.size() >= 2 && data.options.size() <= 6
+        && data.status == 'open'
+        && data.createdAt is number
+        && (!('expireAt' in data) || data.expireAt is timestamp);
     }
 
     function isValidFeedback(data) {

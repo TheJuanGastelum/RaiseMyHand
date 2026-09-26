@@ -203,6 +203,12 @@ import { firebaseConfig } from "./firebase-config.js";
   function sessionDoc(code) { return db.doc('sessions/' + code); }
   function queueCol(code) { return db.collection('sessions/' + code + '/queue'); }
   function questionsCol(code) { return db.collection('sessions/' + code + '/questions'); }
+  function rosterCol(code) { return db.collection('sessions/' + code + '/roster'); }
+  function pollsCol(code) { return db.collection('sessions/' + code + '/polls'); }
+  function votesCol(code, pollId) { return db.collection('sessions/' + code + '/polls/' + pollId + '/votes'); }
+  function privateKeyDoc(code) { return db.doc('sessions/' + code + '/private/key'); }
+  function ownerDoc(code, uid) { return db.doc('sessions/' + code + '/owners/' + uid); }
+  function myUid() { return auth.currentUser && auth.currentUser.uid; }
 
   var icons = {
     teacher: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-icon)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/></svg>',
@@ -456,8 +462,8 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div id="resumeBox" style="display:none;margin-top:16px;border-top:1px solid var(--line);padding-top:16px;">' +
           '<div class="field" style="margin-bottom:10px;">' +
             '<label for="resumeCode">Reopen code</label>' +
-            '<input type="text" id="resumeCode" class="code-input" maxlength="6" placeholder="CODE+KEY">' +
-            '<div class="hint">The 4-character class code, plus the 2-character teacher key you saw when you started the session.</div>' +
+            '<input type="text" id="resumeCode" class="code-input" maxlength="12" placeholder="12 CHARACTERS">' +
+            '<div class="hint">The 12-character reopen code shown on your board (the 4-character class code plus your 8-character private key).</div>' +
           '</div>' +
           '<button class="btn btn-ghost" id="resumeBtn">Resume session</button>' +
         '</div>' +
@@ -496,49 +502,50 @@ import { firebaseConfig } from "./firebase-config.js";
     root.querySelector('#resumeBtn').addEventListener('click', function () {
       var btn = this;
       var raw = root.querySelector('#resumeCode').value.trim().toUpperCase().replace(/\s+/g, '');
-      if (raw.length !== 6) { setErr('Enter your full 6-character reopen code (4-character class code + 2-character teacher key).'); return; }
+      if (raw.length !== 12) { setErr('Enter your full 12-character reopen code (4-character class code + 8-character private key).'); return; }
       var code = raw.slice(0, 4);
-      var key = raw.slice(4, 6);
+      var key = raw.slice(4, 12);
       btn.disabled = true; btn.textContent = 'Checking…';
-      sessionDoc(code).get().then(function (snap) {
-        if (!snap.exists) {
-          setErr('No active session with that code.');
-          btn.disabled = false; btn.textContent = 'Resume session';
-          return;
-        }
-        var data = snap.data() || {};
-        if (!data.teacherKey || data.teacherKey !== key) {
-          setErr('That reopen code doesn’t match this session.');
-          btn.disabled = false; btn.textContent = 'Resume session';
-          return;
-        }
+      claimOwnership(code, key).then(function (data) {
         saveLS(LS_TEACHER, { code: code, className: data.className || '', teacherKey: key });
-        maybeSoftReset(code, data).catch(function () {}).then(function () {
+        return maybeSoftReset(code, data).catch(function () {}).then(function () {
           renderTeacherBoard(code, data.className || '', key);
         });
-      }).catch(function () {
-        setErr('Something went wrong checking that code.');
+      }).catch(function (err) {
+        setErr(err && err.message === 'nosession' ? 'No active session with that code.' : 'That reopen code doesn’t match this session.');
         btn.disabled = false; btn.textContent = 'Resume session';
       });
     });
 
     // Try to resume a session already open on this device.
     if (saved && saved.code && saved.teacherKey) {
-      sessionDoc(saved.code).get().then(function (snap) {
-        if (snap.exists) {
-          var data = snap.data() || {};
-          maybeSoftReset(saved.code, data).catch(function () {}).then(function () {
-            renderTeacherBoard(saved.code, data.className || saved.className || '', saved.teacherKey);
-          });
-        } else {
-          clearLS(LS_TEACHER);
-        }
-      }).catch(function () {});
+      claimOwnership(saved.code, saved.teacherKey).then(function (data) {
+        return maybeSoftReset(saved.code, data).catch(function () {}).then(function () {
+          renderTeacherBoard(saved.code, data.className || saved.className || '', saved.teacherKey);
+        });
+      }).catch(function () {
+        clearLS(LS_TEACHER);
+      });
     } else if (saved && saved.code) {
-      // Saved from before the teacher-key feature existed -- there's no
-      // key to trust, so don't auto-resume into someone else's board.
+      // Saved by an older version with no usable key -- start fresh.
       clearLS(LS_TEACHER);
     }
+  }
+
+  // Proves this browser knows the session's private key (or created it) so
+  // the security rules treat it as a teacher/co-host. The key itself lives in
+  // a document nobody can read; the rules compare what we send against it.
+  function claimOwnership(code, secret) {
+    var uid = myUid();
+    return sessionDoc(code).get().then(function (snap) {
+      if (!snap.exists) throw new Error('nosession');
+      var data = snap.data() || {};
+      if (data.creatorUid && data.creatorUid === uid) return data;
+      return ownerDoc(code, uid).get().then(function (o) {
+        if (o.exists && (o.data() || {}).sid === data.createdAt) return data;
+        return ownerDoc(code, uid).set({ secret: secret, sid: data.createdAt }).then(function () { return data; });
+      });
+    });
   }
 
   function startNewSession(className) {
@@ -550,7 +557,8 @@ import { firebaseConfig } from "./firebase-config.js";
     // being able to claim the teacher board for themselves.
     function attempt(triesLeft) {
       var code = randomCode(4);
-      var teacherKey = randomCode(2);
+      var teacherKey = randomCode(8);
+      var uid = myUid();
       return sessionDoc(code).get().then(function (snap) {
         if (snap.exists) {
           var data = snap.data() || {};
@@ -564,7 +572,12 @@ import { firebaseConfig } from "./firebase-config.js";
           if (triesLeft <= 0) throw new Error('Could not generate a free code. Try again.');
           return attempt(triesLeft - 1);
         }
-        return sessionDoc(code).set({ code: code, className: className || '', createdAt: Date.now(), lastActiveAt: Date.now(), teacherKey: teacherKey }).then(function () {
+        var now = Date.now();
+        return sessionDoc(code).set({ code: code, className: className || '', createdAt: now, lastActiveAt: now, creatorUid: uid }).then(function () {
+          return privateKeyDoc(code).set({ secret: teacherKey }).catch(function (err) {
+            return sessionDoc(code).delete().catch(function () {}).then(function () { throw err; });
+          });
+        }).then(function () {
           return { code: code, teacherKey: teacherKey };
         });
       });
@@ -577,14 +590,25 @@ import { firebaseConfig } from "./firebase-config.js";
   // nobody's used in HARD_EXPIRE_IDLE_MS.
   function wipeSession(code) {
     return Promise.all([
-      queueCol(code).get().then(function (snap) {
-        return Promise.all(snap.docs.map(function (d) { return queueCol(code).doc(d.id).delete(); }));
-      }),
-      questionsCol(code).get().then(function (snap) {
-        return Promise.all(snap.docs.map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
-      })
+      deleteAllDocs(queueCol, code),
+      deleteAllDocs(questionsCol, code),
+      deleteAllDocs(rosterCol, code),
+      deletePolls(code)
     ]).then(function () {
+      return privateKeyDoc(code).delete().catch(function () {});
+    }).then(function () {
       return sessionDoc(code).delete();
+    });
+  }
+
+  // Polls hold a votes subcollection, which has to go first.
+  function deletePolls(code) {
+    return pollsCol(code).get().then(function (snap) {
+      return Promise.all(snap.docs.map(function (p) {
+        return deleteAllDocs(function (c) { return votesCol(c, p.id); }, code).then(function () {
+          return pollsCol(code).doc(p.id).delete();
+        });
+      }));
     });
   }
 
@@ -600,9 +624,12 @@ import { firebaseConfig } from "./firebase-config.js";
       return Promise.all([
         deleteAllDocs(queueCol, code),
         deleteAllDocs(questionsCol, code),
+        deleteAllDocs(rosterCol, code),
+        deletePolls(code),
         sessionDoc(code).update({ blocked: {} }),
+        sessionDoc(code).update({ pollId: null }),
         sessionDoc(code).update({ announcement: null, lastActiveAt: now }),
-        sessionDoc(code).update({ discussionMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
+        sessionDoc(code).update({ discussionMode: false, rosterMode: false, pollsMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
       ]);
     });
   }
@@ -1566,12 +1593,12 @@ import { firebaseConfig } from "./firebase-config.js";
     return wipeSession(code);
   }
 
-  // A co-host link carries ?resume=CODE+KEY (6 characters). Returns it or ''.
+  // A co-host link carries ?resume=CODE+KEY (12 characters). Returns it or ''.
   function readResumeParam() {
     var raw = '';
     try { raw = (new URLSearchParams(location.search).get('resume') || '').trim().toUpperCase(); } catch (e) { return ''; }
-    if (raw.length !== 6) return '';
-    for (var i = 0; i < 6; i++) if (CODE_CHARS.indexOf(raw[i]) === -1) return '';
+    if (raw.length !== 12) return '';
+    for (var i = 0; i < 12; i++) if (CODE_CHARS.indexOf(raw[i]) === -1) return '';
     return raw;
   }
 
@@ -1641,7 +1668,6 @@ import { firebaseConfig } from "./firebase-config.js";
           return;
         }
         var data = snap.data() || {};
-        sweepExpired(code);
         saveLS(LS_STUDENT, { code: code, className: data.className || '', name: name, seat: seat, ticketId: null });
         renderStudentWait(code, data.className || '', name, seat);
       }).catch(function () {
