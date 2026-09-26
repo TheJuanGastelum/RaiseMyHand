@@ -46,6 +46,14 @@ const CONFIG_SCHEMAS = {
     { key: "max", label: "Slider max", type: "number" },
     { key: "step", label: "Slider step", type: "number" },
   ],
+  "ac-impedance": [
+    { key: "R", label: "Resistance R (Ω)", type: "number" },
+    { key: "X", label: "Reactance X (Ω, positive=inductive, negative=capacitive)", type: "number" },
+    { key: "find", label: "Find", type: "select", options: ["Z", "angle"] },
+    { key: "min", label: "Slider min", type: "number" },
+    { key: "max", label: "Slider max", type: "number" },
+    { key: "step", label: "Slider step", type: "number" },
+  ],
   "ac-power": [
     { key: "V", label: "Voltage V (rms)", type: "number" },
     { key: "I", label: "Current I (rms)", type: "number" },

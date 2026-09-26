@@ -92,6 +92,27 @@ const CircuitRender = {
     }
   },
 
+  inductor(ctx, x, y, w, label) {
+    const bumps = 4;
+    const bumpW = w / bumps;
+    ctx.strokeStyle = PALETTE.node;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, y);
+    for (let i = 0; i < bumps; i++) {
+      const cx = x - w / 2 + bumpW * (i + 0.5);
+      ctx.arc(cx, y, bumpW / 2, Math.PI, 0, false);
+    }
+    ctx.stroke();
+    if (label) {
+      ctx.fillStyle = PALETTE.text;
+      ctx.font = "8px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(label, x, y + 20);
+      ctx.textAlign = "left";
+    }
+  },
+
   capacitor(ctx, x, y, label) {
     ctx.strokeStyle = PALETTE.capacitor;
     ctx.lineWidth = 3;

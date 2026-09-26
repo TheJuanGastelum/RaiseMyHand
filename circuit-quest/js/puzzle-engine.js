@@ -195,6 +195,59 @@ const PuzzleEngine = {
       },
     },
 
+    "ac-impedance": {
+      // config: { R, X, find: "Z"|"angle" }
+      // X > 0 is inductive reactance, X < 0 is capacitive.
+      unit(config) {
+        return config.find === "Z" ? "Ω" : "°";
+      },
+      label(config) {
+        return config.find === "Z" ? "Impedance Magnitude |Z|" : "Impedance Angle (θ)";
+      },
+      answer(config) {
+        const { R, X, find } = config;
+        if (find === "Z") return Math.sqrt(R * R + X * X);
+        return (Math.atan2(X, R) * 180) / Math.PI;
+      },
+      givenText(config) {
+        const kind = config.X > 0 ? "inductive" : config.X < 0 ? "capacitive" : "purely resistive";
+        return [`R = ${config.R} Ω`, `X = ${config.X > 0 ? "+" : ""}${config.X} Ω (${kind})`];
+      },
+      render(ctx, w, h, config, guess, t) {
+        R.clear(ctx, w, h);
+        const cy = 45;
+        R.wire(ctx, 30, cy, 30, cy, false);
+        R.resistor(ctx, 90, cy, 50, `R=${config.R}Ω`);
+        if (config.X >= 0) R.inductor(ctx, 170, cy, 40, `X=${config.X}Ω`);
+        else R.capacitor(ctx, 170, cy, `X=${config.X}Ω`);
+        R.wire(ctx, 30, cy - 15, 30, cy + 15, false);
+        R.wire(ctx, 30, cy, 65, cy, true, t * 6);
+        R.wire(ctx, 115, cy, 150, cy, true, t * 6);
+        R.wire(ctx, 190, cy, w - 30, cy, true, t * 6);
+        R.wire(ctx, w - 30, cy - 15, w - 30, cy + 15, false);
+
+        const ox = 60,
+          oy = h - 20,
+          scale = 1.4;
+        const rLen = Math.min(config.R * scale, 90);
+        const xLen = Math.min(Math.abs(config.X) * scale, 70) * (config.X >= 0 ? -1 : 1);
+        ctx.strokeStyle = R.palette.textDim;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(ox + rLen, oy);
+        ctx.lineTo(ox + rLen, oy - xLen);
+        ctx.stroke();
+        ctx.strokeStyle = R.palette.target;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy);
+        ctx.lineTo(ox + rLen, oy - xLen);
+        ctx.stroke();
+        R.text(ctx, ox + rLen / 2 - 6, oy + 10, "R", R.palette.resistor, 8);
+        R.text(ctx, ox + rLen + 4, oy - xLen / 2, "X", R.palette.node, 8);
+        R.text(ctx, ox + rLen / 2 - 4, oy - xLen / 2 - 6, "Z", R.palette.target, 8);
+      },
+    },
+
     "ac-power": {
       // config: { V, I, angleDeg, find: "P"|"Q"|"S"|"pf" }
       // V, I are RMS magnitudes; angleDeg is the angle current lags voltage

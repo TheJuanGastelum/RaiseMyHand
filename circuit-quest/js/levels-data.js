@@ -22,7 +22,8 @@
 //                            js/puzzle-engine.js): "ohms-law",
 //                            "series-circuit", "parallel-circuit",
 //                            "kirchhoff-current", "rc-time-constant",
-//                            "ac-power", "three-phase", "laplace-transform".
+//                            "ac-impedance", "ac-power", "three-phase",
+//                            "laplace-transform".
 //   config: object         — parameters for that puzzle type. Each type
 //                            documents its own config shape at the top of
 //                            its entry in puzzle-engine.js. This is the
@@ -143,8 +144,32 @@ window.DEFAULT_LEVELS = [
     hint: "τ = R × C = 10 × 5.",
   },
   {
-    id: "lvl_power_1",
+    id: "lvl_impedance_1",
     order: 8,
+    topic: "AC Impedance",
+    title: "Combining R and X",
+    concept:
+      "Add an inductor or capacitor to a resistor and Ohm's law still holds, but resistance alone can't describe it anymore — reactance (X) also opposes current, just 90° out of step with resistance. Together they form impedance, a single complex quantity:\n\nZ = R + jX\n\nBecause R and X are 90° apart, their combined magnitude isn't R + X — it's the hypotenuse of a right triangle with R and X as legs, exactly like Pythagoras:\n\n|Z| = √(R² + X²)\n\nThis triangle is the single most useful picture in AC circuit analysis — you'll see the same shape again in a few levels for power. Find the impedance magnitude for the R and X shown below.",
+    puzzleType: "ac-impedance",
+    config: { R: 30, X: 40, find: "Z", min: 0, max: 80, step: 0.5 },
+    tolerance: 0.05,
+    hint: "|Z| = √(R² + X²) = √(30² + 40²) = √(900+1600) = √2500.",
+  },
+  {
+    id: "lvl_impedance_2",
+    order: 9,
+    topic: "AC Impedance",
+    title: "The Impedance Angle",
+    concept:
+      "|Z| tells you how much the load opposes current overall; the angle θ of Z tells you the *character* of that opposition — how far current gets pushed out of step with voltage.\n\nθ = arctan(X / R)\n\nA positive X (inductive) makes current lag voltage — θ > 0. A negative X (capacitive) makes current lead voltage — θ < 0. Pure resistance gives θ = 0: current and voltage stay perfectly in step. This is the exact same θ that shows up later in the power triangle.\n\nFind θ for this load. Note the reactance is negative — it's capacitive, so expect a negative angle.",
+    puzzleType: "ac-impedance",
+    config: { R: 10, X: -17.32, find: "angle", min: -90, max: 90, step: 0.5 },
+    tolerance: 0.05,
+    hint: "θ = arctan(X/R) = arctan(-17.32/10) ≈ -60°.",
+  },
+  {
+    id: "lvl_power_1",
+    order: 10,
     topic: "AC Power",
     title: "Real, Reactive, and Apparent Power",
     concept:
@@ -156,7 +181,7 @@ window.DEFAULT_LEVELS = [
   },
   {
     id: "lvl_power_2",
-    order: 9,
+    order: 11,
     topic: "AC Power",
     title: "Power Factor",
     concept:
@@ -168,7 +193,7 @@ window.DEFAULT_LEVELS = [
   },
   {
     id: "lvl_3phase_1",
-    order: 10,
+    order: 12,
     topic: "Three-Phase Power",
     title: "Wye: Line vs. Phase Voltage",
     concept:
@@ -180,7 +205,7 @@ window.DEFAULT_LEVELS = [
   },
   {
     id: "lvl_3phase_2",
-    order: 11,
+    order: 13,
     topic: "Three-Phase Power",
     title: "Total Power in a Balanced System",
     concept:
@@ -192,7 +217,7 @@ window.DEFAULT_LEVELS = [
   },
   {
     id: "lvl_laplace_1",
-    order: 12,
+    order: 14,
     topic: "Laplace Transforms",
     title: "Transforming an Exponential",
     concept:
@@ -204,7 +229,7 @@ window.DEFAULT_LEVELS = [
   },
   {
     id: "lvl_laplace_2",
-    order: 13,
+    order: 15,
     topic: "Laplace Transforms",
     title: "Transforming a Ramp",
     concept:
@@ -213,5 +238,65 @@ window.DEFAULT_LEVELS = [
     config: { kind: "ramp", s: 2, min: 0, max: 2, step: 0.01 },
     tolerance: 0.05,
     hint: "F(s) = 1/s² = 1/(2²) = 1/4.",
+  },
+  {
+    id: "lvl_power_3",
+    order: 16,
+    topic: "AC Power",
+    title: "Apparent Power at Unity PF",
+    concept:
+      "When a load is purely resistive — a toaster, an incandescent bulb, a resistive heater — current and voltage stay perfectly in step: θ = 0. That makes cos θ = 1 (\"unity power factor\"), so real power and apparent power become the same number:\n\nP = S = V·I\n\nThis is the best case for a utility: every volt-amp it delivers turns into real work, with nothing wasted sloshing back and forth reactively. Find the apparent power S for this unity-power-factor load.",
+    puzzleType: "ac-power",
+    config: { V: 220, I: 5, angleDeg: 0, find: "S", min: 0, max: 1500, step: 1 },
+    tolerance: 0.05,
+    hint: "θ = 0, so S = V·I = 220 × 5 (and P would equal the same number).",
+  },
+  {
+    id: "lvl_power_4",
+    order: 17,
+    topic: "AC Power",
+    title: "Leading Loads and Negative Q",
+    concept:
+      "A capacitive load makes current *lead* voltage instead of lag it — the impedance angle θ is negative. Run that through Q = V·I·sin θ and Q comes out negative too.\n\nThat sign is exactly why capacitor banks are used to fix a plant's power factor: an inductive load (motors) produces positive Q, a capacitive load produces negative Q, and utilities size capacitor banks to cancel the two out so the net reactive power — and the extra current it costs — drops toward zero.\n\nFind Q for this leading (capacitive) load. It should come out negative.",
+    puzzleType: "ac-power",
+    config: { V: 100, I: 4, angleDeg: -60, find: "Q", min: -400, max: 0, step: 1 },
+    tolerance: 0.05,
+    hint: "Q = V·I·sin(θ) = 100 × 4 × sin(−60°) — sin of a negative angle is negative.",
+  },
+  {
+    id: "lvl_3phase_3",
+    order: 18,
+    topic: "Three-Phase Power",
+    title: "Delta: Line vs. Phase Current",
+    concept:
+      "A Δ (delta) connection wires the three windings end-to-end in a triangle instead of to a shared neutral. That flips which quantity gets the √3 treatment: in delta, it's line voltage that equals phase voltage, while line current is the one that picks up the √3 factor from combining two phase currents 120° apart:\n\nV_line = V_phase        I_line = √3 × I_phase\n\n(Compare this to wye, where it was the other way around — V_line = √3×V_phase and I_line = I_phase. Both systems are just different ways of wiring the same three sinusoids.)\n\nFind the line current for this delta-connected load.",
+    puzzleType: "three-phase",
+    config: { system: "delta", V_phase: 208, I_phase: 12, cosPhi: 0.9, find: "I_line", min: 0, max: 30, step: 0.1 },
+    tolerance: 0.05,
+    hint: "I_line = √3 × I_phase = 1.732 × 12.",
+  },
+  {
+    id: "lvl_3phase_4",
+    order: 19,
+    topic: "Three-Phase Power",
+    title: "Delta System, Total Power",
+    concept:
+      "The total-power formula doesn't care whether the load is wired wye or delta, as long as you plug in line quantities:\n\nP_total = √3 × V_line × I_line × cos θ\n\nThat's the whole point of using line quantities — one formula covers both wiring schemes. For this delta load, V_line equals V_phase directly (208 V), but you still need to convert I_phase to I_line first.",
+    puzzleType: "three-phase",
+    config: { system: "delta", V_phase: 208, I_phase: 20, cosPhi: 0.88, find: "P_total", min: 0, max: 14000, step: 20 },
+    tolerance: 0.05,
+    hint: "V_line = 208 (delta). I_line = √3×20 ≈ 34.64. P = √3 × 208 × 34.64 × 0.88.",
+  },
+  {
+    id: "lvl_laplace_3",
+    order: 20,
+    topic: "Laplace Transforms",
+    title: "The Unit Step",
+    concept:
+      "The unit step, u(t) — off for all t < 0, then instantly on and held at 1 forever after — models any signal that switches on and stays on: a switch closing, a source turning on. It's the simplest possible transform pair, and everything else in the standard table builds on it:\n\nℒ{ u(t) } = 1 / s\n\nEvaluate F(s) for the step function at the given s.",
+    puzzleType: "laplace-transform",
+    config: { kind: "step", s: 4, min: 0, max: 1, step: 0.005 },
+    tolerance: 0.05,
+    hint: "F(s) = 1/s = 1/4.",
   },
 ];
