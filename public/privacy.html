@@ -58,7 +58,10 @@
   <tr><td>Optional note attached to a raised hand</td><td>Participant, only if they choose &ldquo;let my teacher see this note&rdquo;</td><td>To share context with the teacher. Notes not shared stay on the participant&rsquo;s own device.</td></tr>
   <tr><td>Questions (discussion mode), with the name/seat shown at the time unless the participant chooses to ask anonymously</td><td>Participant</td><td>To show questions to the teacher. Anonymous questions omit the name and seat, but still carry the anonymous device ID so a teacher can mute or block abuse.</td></tr>
   <tr><td>Optional hand type (quick question, stuck, or check my work)</td><td>Participant</td><td>To help the teacher decide who to help first.</td></tr>
-  <tr><td>Class name, class code, a short teacher key, announcement text, mode settings</td><td>Teacher</td><td>To run and reopen a session.</td></tr>
+  <tr><td>Class name, class code, a private key, announcement text, mode settings</td><td>Teacher</td><td>To run and reopen a session. The private key lets a teacher or co-host prove they run the board; it is stored where no browser can read it.</td></tr>
+  <tr><td>Attendance roster: name and/or seat, and when you joined</td><td>Participant, only while the teacher has turned on the Roster mode</td><td>So the teacher can see who is in the room and export a list. Only the teacher can read it.</td></tr>
+  <tr><td>Poll answers (which option you chose) with the anonymous device ID</td><td>Participant, only during a poll</td><td>To count votes and stop double voting. Results are shown as totals; the interface never shows who voted for what.</td></tr>
+  <tr><td>Question +1s (the anonymous device ID)</td><td>Participant</td><td>To count each person once. The interface shows only totals.</td></tr>
   <tr><td>Random anonymous device ID</td><td>Generated automatically (Firebase Anonymous Authentication)</td><td>To allow one raised hand per device, to let a teacher mute or block a disruptive participant for a session, and to keep the service from being written to by unknown programs. It is not linked to your identity.</td></tr>
   <tr><td>Timestamps (when a hand was raised, when a session was last used)</td><td>Generated automatically</td><td>Queue order, wait times, and cleanup.</td></tr>
   <tr><td>Feedback messages (optional) and the role you select (teacher or student)</td><td>Anyone who submits the feedback form</td><td>To improve the service. Please do not include personal information.</td></tr>
@@ -69,13 +72,15 @@
 <h2>3. Who can see what</h2>
 <ul>
   <li><strong>Anyone with a class code</strong> can view that class&rsquo;s live queue (names, seat numbers, and any shared notes) and questions. This is how the classroom display works. Keep codes to the people in the room, and end the session when finished.</li>
-  <li><strong>Teachers</strong> can see the queue, questions, and any notes participants chose to share, and can remove, mute, or block participants for that session.</li>
+  <li><strong>Teachers</strong> can see the queue, questions, and any notes participants chose to share, and can remove, mute, or block participants for that session. Only teachers (the person who started the session, and co-hosts who have its private key) can read the attendance roster and individual poll votes, and only they can end or change the session.</li>
+  <li><strong>Everyone with the class code</strong> can also see poll questions and totals, and the text of questions with their +1 counts (without names).</li>
   <li><strong>Feedback messages</strong> are not shown to other users; they can be read only by the operator through the database console.</li>
 </ul>
 
 <h2>4. How long information is kept</h2>
 <ul>
   <li><strong>Queue entries and questions:</strong> removed when a teacher lowers a hand, marks it helped, clears the queue or questions, or ends the session. Each also carries a 24-hour expiry, and expired items are cleaned up the next time someone opens that session. A session nobody opens again may keep its queue entries until cleanup runs.</li>
+  <li><strong>Roster and polls:</strong> the roster is deleted when the teacher turns Roster off, clears or ends the session. Polls and votes are deleted when a new poll starts, the Polls mode is turned off, or the session ends. Both also carry the same 24-hour expiry.</li>
   <li><strong>Session record</strong> (code, class name, teacher key, settings; no participant data): kept so a teacher can reuse the same code, until the teacher ends the session. A code left unused for a long period may be reclaimed for a new session, which deletes the old record.</li>
   <li><strong>Mute and block lists:</strong> apply only to one session and are cleared when the session is reset, ended, or reclaimed.</li>
   <li><strong>On your device:</strong> the app saves preferences (theme, layout), the last class you joined, your name and seat, draft notes, a teacher&rsquo;s reopen details, and a teacher&rsquo;s optional session statistics (counts, wait times, and the names shown for helped students, removed after 24 hours) in your browser&rsquo;s local storage so the page can resume. You can clear this at any time in your browser settings.</li>

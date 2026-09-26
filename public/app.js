@@ -2574,6 +2574,7 @@ import { firebaseConfig } from "./firebase-config.js";
     'No questions yet — students can type questions from their devices.': 'Aún no hay preguntas: los estudiantes pueden escribirlas desde sus dispositivos.',
     '✓ Answered': '✓ Respondida', 'Skip →': 'Omitir →', '↩ Move back': '↩ Devolver',
     'Mark answered': 'Marcar como respondida', 'Skip for now': 'Omitir por ahora',
+    'Mute': 'Silenciar', 'Unmute': 'Quitar silencio',
     'Mute this student from posting questions': 'Silenciar a este estudiante para que no publique preguntas', 'Unmute this student': 'Quitar silencio a este estudiante',
     'Standard': 'Estándar', 'Discussion': 'Discusión', 'Attendance roster': 'Lista de asistencia', 'Polls': 'Encuestas',
     'Adds student questions': 'Agrega preguntas de estudiantes', 'Lists who joined, with CSV export': 'Muestra quién se unió, con exportación a CSV', 'Quick live polls for the class': 'Encuestas rápidas en vivo para la clase',
