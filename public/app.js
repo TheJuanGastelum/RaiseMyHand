@@ -212,6 +212,7 @@ import { firebaseConfig } from "./firebase-config.js";
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
     eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
     eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2C11 5.1 11.5 5 12 5c6 0 9.5 7 9.5 7-.6 1.2-1.6 2.7-3 4.1M6.3 6.3C4 7.9 2.5 12 2.5 12s3.5 7 9.5 7c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+    stats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>',
     gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
     bellOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M8.2 4.6A6 6 0 0 1 18 9c0 3 .6 4.9 1.3 6M6 9c0 6-2.5 7.5-2.5 7.5H15"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
@@ -665,6 +666,7 @@ import { firebaseConfig } from "./firebase-config.js";
             '<div class="set-row"><button class="icon-btn" id="soundBtn" title="New-hand chime" aria-label="Toggle new-hand chime"></button><span>New-hand chime</span></div>' +
             '<div class="set-row"><button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button><span>Side-by-side layout</span></div>' +
             '<div class="set-row"><button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button><span>Show student notes</span></div>' +
+            '<div class="set-row"><button class="icon-btn" id="statsBtn" title="Session stats" aria-label="Session stats">' + icons.stats + '</button><span>Session stats</span></div>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -968,8 +970,12 @@ import { firebaseConfig } from "./firebase-config.js";
     activeUnsubs.push(commitHelp);
     function markHelped(id, label, btn) {
       commitHelp();
+      var src = lastQueueDocs.filter(function (d) { return d.id === id; })[0];
+      var srcData = (src && src.data()) || {};
       queueCol(code).doc(id).update({ status: 'helped' }).then(function () {
-        pendingHelp = { id: id, timer: setTimeout(commitHelp, UNDO_MS) };
+        var logEntry = { id: id, label: label || 'Student', kind: srcData.kind || '', joinedAt: srcData.joinedAt || Date.now(), helpedAt: Date.now() };
+        sessLog.helped.push(logEntry); saveLog();
+        pendingHelp = { id: id, entry: logEntry, timer: setTimeout(commitHelp, UNDO_MS) };
         undoBarEl = document.createElement('div');
         undoBarEl.className = 'undo-bar';
         undoBarEl.innerHTML = '<span>' + esc(label || 'Student') + ' marked helped</span><button id="undoHelpBtn">Undo</button>';
@@ -977,6 +983,8 @@ import { firebaseConfig } from "./firebase-config.js";
         undoBarEl.querySelector('#undoHelpBtn').addEventListener('click', function () {
           if (!pendingHelp || pendingHelp.id !== id) return;
           clearTimeout(pendingHelp.timer);
+          var undone = pendingHelp.entry;
+          sessLog.helped = sessLog.helped.filter(function (e) { return e !== undone; }); saveLog();
           pendingHelp = null;
           hideUndoBar();
           queueCol(code).doc(id).update({ status: 'waiting' }).catch(function () { showToast('Could not undo.'); });
@@ -1157,9 +1165,96 @@ import { firebaseConfig } from "./firebase-config.js";
     function setTitleCount(n) { document.title = (n ? '(' + n + ') ' : '') + 'RaiseMyHand'; }
     activeUnsubs.push(function () { setTitleCount(0); });
 
+    // ---- Session stats: kept only in this browser, never uploaded ----
+    var logKey = 'rmh_log_' + code;
+    var sessLog = loadLS(logKey) || { raised: 0, seen: {}, times: [], helped: [] };
+    function saveLog() { sessLog.at = Date.now(); saveLS(logKey, sessLog); }
+    (function pruneOldLogs() {
+      try {
+        for (var i = localStorage.length - 1; i >= 0; i--) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf('rmh_log_') === 0 && k !== logKey) {
+            var v = JSON.parse(localStorage.getItem(k) || '{}');
+            if (!v.at || Date.now() - v.at > 24 * 60 * 60 * 1000) localStorage.removeItem(k);
+          }
+        }
+      } catch (e) {}
+    })();
+    function recordRaised(docs) {
+      var changed = false;
+      docs.forEach(function (d) {
+        var j = (d.data() || {}).joinedAt || 0;
+        var key = d.id + '|' + j;
+        if (!sessLog.seen[key]) { sessLog.seen[key] = 1; sessLog.raised++; sessLog.times.push(j); changed = true; }
+      });
+      if (changed) saveLog();
+    }
+    function fmtDur(s) {
+      s = Math.round(s);
+      return Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+    }
+    function statsSummary() {
+      var h = sessLog.helped;
+      var waits = h.map(function (e) { return Math.max(0, (e.helpedAt - e.joinedAt) / 1000); });
+      var avg = waits.length ? waits.reduce(function (a, b) { return a + b; }, 0) / waits.length : 0;
+      var max = waits.length ? Math.max.apply(null, waits) : 0;
+      var busiest = '';
+      if (sessLog.times.length) {
+        var buckets = {};
+        sessLog.times.forEach(function (t) { var b = Math.floor(t / 600000); buckets[b] = (buckets[b] || 0) + 1; });
+        var best = Object.keys(buckets).sort(function (a, b) { return buckets[b] - buckets[a]; })[0];
+        var st = new Date(best * 600000);
+        busiest = st.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' (' + buckets[best] + ' hands in 10 min)';
+      }
+      return { raised: sessLog.raised, helped: h.length, avg: avg, max: max, busiest: busiest };
+    }
+    function csvCell(v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }
+    function downloadCsv() {
+      var rows = [['Student', 'Type', 'Raised at', 'Helped at', 'Wait (seconds)']];
+      sessLog.helped.forEach(function (e) {
+        rows.push([e.label, KIND_LABELS[e.kind] || '', new Date(e.joinedAt).toLocaleString(), new Date(e.helpedAt).toLocaleString(), Math.round((e.helpedAt - e.joinedAt) / 1000)]);
+      });
+      var blob = new Blob([rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'raisemyhand-' + code + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    }
+    var statsOverlay = null;
+    function closeStats() { if (statsOverlay) { statsOverlay.remove(); statsOverlay = null; } }
+    activeUnsubs.push(closeStats);
+    root.querySelector('#statsBtn').addEventListener('click', function () {
+      closeSettings(); closeStats();
+      var s = statsSummary();
+      statsOverlay = document.createElement('div');
+      statsOverlay.className = 'qr-overlay';
+      statsOverlay.innerHTML =
+        '<div class="qr-card" role="dialog" aria-label="Session stats" style="text-align:left;">' +
+          '<h3 style="margin-bottom:10px;">Session stats</h3>' +
+          '<div class="stats-grid">' +
+            '<div><b>' + s.raised + '</b><span>hands raised</span></div>' +
+            '<div><b>' + s.helped + '</b><span>marked helped</span></div>' +
+            '<div><b>' + fmtDur(s.avg) + '</b><span>average wait</span></div>' +
+            '<div><b>' + fmtDur(s.max) + '</b><span>longest wait</span></div>' +
+          '</div>' +
+          (s.busiest ? '<div class="qr-hint" style="text-align:left;">Busiest: ' + esc(s.busiest) + '</div>' : '') +
+          '<div class="qr-hint" style="text-align:left;">Kept only in this browser for up to 24 hours. Never uploaded.</div>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+            '<button class="btn btn-primary" id="statsCsv"' + (s.helped ? '' : ' disabled') + '>Download CSV</button>' +
+            '<button class="btn btn-ghost" id="statsClose">Close</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(statsOverlay);
+      statsOverlay.addEventListener('click', function (e) { if (e.target === statsOverlay) closeStats(); });
+      statsOverlay.querySelector('#statsClose').addEventListener('click', closeStats);
+      statsOverlay.querySelector('#statsCsv').addEventListener('click', downloadCsv);
+    });
+
     var knownIds = null;
     var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
       var waiting = snap.docs.filter(function (d) { return (d.data() || {}).status !== 'helped'; });
+      recordRaised(snap.docs);
       var ids = {};
       snap.docs.forEach(function (d) { ids[d.id] = true; });
       if (knownIds) {

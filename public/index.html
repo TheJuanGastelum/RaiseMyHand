@@ -294,6 +294,10 @@
   .discuss-actions .btn{ width:auto; padding:5px 10px; font-size:.78rem; }
   @keyframes new-hand-flash{ 0%{ box-shadow:0 0 0 0 var(--accent); background:var(--accent-soft); } 100%{ box-shadow:0 0 0 12px transparent; } }
   .stub.flash-new{ animation:new-hand-flash 1.4s ease-out 2; }
+  .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .stats-grid div{ background:var(--surface-2); border-radius:10px; padding:10px 12px; }
+  .stats-grid b{ display:block; font-family:"Space Mono"; font-size:1.5rem; color:var(--accent); }
+  .stats-grid span{ font-size:.78rem; color:var(--ink-soft); font-weight:600; }
   .code-chip{ position:relative; }
   .set-pop{ position:absolute; z-index:60; top:calc(100% + 8px); right:0; min-width:220px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:6px; }
   .set-pop[hidden]{ display:none; }
