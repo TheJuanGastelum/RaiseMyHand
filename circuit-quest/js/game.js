@@ -9,7 +9,8 @@
 
   const mapScreen = document.getElementById("map-screen");
   const puzzleScreen = document.getElementById("puzzle-screen");
-  const mapEl = document.getElementById("map");
+  const overworldCanvas = document.getElementById("overworld-canvas");
+  const overworldPrompt = document.getElementById("overworld-prompt");
   const scoreBadge = document.getElementById("score-badge");
 
   function totalStars() {
@@ -20,21 +21,7 @@
   function renderMap() {
     levels = LevelStore.getAll();
     scoreBadge.textContent = `${totalStars()} ★`;
-    mapEl.innerHTML = "";
-    levels.forEach((lvl) => {
-      const unlocked = Progress.isUnlocked(levels, lvl.id);
-      const progress = Progress.get();
-      const stars = progress.stars[lvl.id] || 0;
-      const card = document.createElement("div");
-      card.className = "panel level-card" + (unlocked ? "" : " locked");
-      card.innerHTML = `
-        <span class="topic">${lvl.topic}</span>
-        <span class="title">${lvl.title}</span>
-        <span class="dim">${unlocked ? (stars ? "★".repeat(stars) + "☆".repeat(3 - stars) : "Not completed") : "🔒 Locked"}</span>
-      `;
-      if (unlocked) card.addEventListener("click", () => openLevel(lvl));
-      mapEl.appendChild(card);
-    });
+    Overworld.init(overworldCanvas, levels, overworldPrompt, openLevel);
   }
 
   function openLevel(lvl) {
@@ -102,10 +89,7 @@
       feedback.textContent = `✓ Correct! Answer ≈ ${result.answer.toFixed(2)} ${unit}. Earned ${stars} ★. ${
         current.hint ? "" : ""
       }`;
-      setTimeout(() => {
-        renderMap();
-        goBack();
-      }, 1600);
+      setTimeout(goBack, 1600);
     } else {
       feedback.className = "incorrect";
       feedback.textContent = `✗ Not quite. Your answer: ${isFinite(guess) ? guess.toFixed(2) : "?"} ${unit}. Try adjusting the slider and check again.`;

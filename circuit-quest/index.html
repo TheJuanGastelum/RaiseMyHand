@@ -8,11 +8,9 @@
   <style>
     body { padding: 20px; max-width: 900px; margin: 0 auto; }
     header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
-    #map { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
-    .level-card { cursor: pointer; text-align: left; }
-    .level-card.locked { cursor: not-allowed; }
-    .level-card .topic { color: var(--accent2); font-size: 9px; display: block; margin-bottom: 6px; }
-    .level-card .title { font-size: 11px; display: block; margin-bottom: 8px; }
+    #overworld-canvas { width: 100%; max-width: 480px; height: auto; background: #0a0b18; display: block; margin: 0 auto; cursor: pointer; image-rendering: pixelated; }
+    #overworld-prompt { text-align: center; font-family: monospace; font-size: 11px; color: var(--accent2); min-height: 16px; margin-top: 10px; }
+    #overworld-help { text-align: center; font-size: 9px; }
     #puzzle-screen { display: none; }
     #circuit-canvas { width: 100%; max-width: 480px; height: auto; background: #0a0b18; display: block; margin: 0 auto; }
     #concept-text { white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.8; color: var(--text); }
@@ -35,8 +33,11 @@
   </header>
 
   <section id="map-screen">
-    <p class="dim">Pick an unlocked level. Complete each one to unlock the next.</p>
-    <div id="map"></div>
+    <p class="dim" id="overworld-help">Walk your character with the arrow keys, or click a node. Press Enter / Space (or click twice) to play a level.</p>
+    <div class="panel">
+      <canvas id="overworld-canvas"></canvas>
+    </div>
+    <p id="overworld-prompt"></p>
   </section>
 
   <section id="puzzle-screen">
@@ -78,6 +79,7 @@
   <script src="js/levels-data.js"></script>
   <script src="js/level-store.js"></script>
   <script src="js/puzzle-engine.js"></script>
+  <script src="js/overworld.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>
