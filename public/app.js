@@ -251,7 +251,7 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   function questionWho(q) {
-    return (q.authorName || q.authorSeat) ? questionWho(q) : 'Anonymous';
+    return (q.authorName || q.authorSeat) ? identityLabel(q.authorName, q.authorSeat) : 'Anonymous';
   }
 
   function identityLabel(name, seat) {
