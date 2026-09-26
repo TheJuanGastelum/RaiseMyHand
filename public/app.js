@@ -396,7 +396,29 @@ import { firebaseConfig } from "./firebase-config.js";
       topbarMeta.appendChild(exitBtn);
     }
     topbarMeta.appendChild(renderThemeSwitch());
+    topbarMeta.appendChild(renderLangButton());
     topbarMeta.appendChild(renderFeedbackButton(role));
+  }
+
+  function renderLangButton() {
+    var b = document.createElement('button');
+    b.className = 'mode-btn lang-btn';
+    b.id = 'langBtn';
+    var toEs = currentLang() !== 'es';
+    b.textContent = toEs ? 'ES' : 'EN';
+    b.setAttribute('title', toEs ? 'Español' : 'English');
+    b.setAttribute('aria-label', toEs ? 'Cambiar a español' : 'Switch to English');
+    b.addEventListener('click', function () {
+      saveLS('rmh_lang_v1', toEs ? 'es' : 'en');
+      location.reload();
+    });
+    return b;
+  }
+
+  function currentLang() {
+    var s = loadLS('rmh_lang_v1');
+    if (s === 'en' || s === 'es') return s;
+    return ((navigator.language || 'en').toLowerCase().indexOf('es') === 0) ? 'es' : 'en';
   }
 
   function mount(html, wide) {
@@ -1580,7 +1602,8 @@ import { firebaseConfig } from "./firebase-config.js";
     }
 
     function renderQuestionsPanel() {
-      var activeQs = lastQuestions.filter(function (q) { return q.status === 'active'; });
+      var activeQs = lastQuestions.filter(function (q) { return q.status === 'active'; })
+        .sort(function (a, b) { return (b.votes - a.votes) || (a.createdAt - b.createdAt); });
       var skippedQs = lastQuestions.filter(function (q) { return q.status === 'skipped'; });
 
       discussCountEl.textContent = activeQs.length + (activeQs.length === 1 ? ' question' : ' questions');
@@ -1601,7 +1624,7 @@ import { firebaseConfig } from "./firebase-config.js";
             '<div class="q-item">' +
               '<div class="q-content">' +
                 '<div class="q-text">' + esc(q.text) + '</div>' +
-                '<div class="q-meta">' + esc(questionWho(q)) + '</div>' +
+                '<div class="q-meta">' + esc(questionWho(q)) + (q.votes ? ' <span class="kind-tag">&#9650; ' + q.votes + '</span>' : '') + '</div>' +
               '</div>' +
               '<div class="q-actions">' +
                 '<button class="q-answered" data-id="' + esc(q.id) + '" title="Mark answered">✓ Answered</button>' +
@@ -1744,7 +1767,8 @@ import { firebaseConfig } from "./firebase-config.js";
           authorName: qd.authorName || '',
           authorSeat: qd.authorSeat || '',
           status: qd.status || 'active',
-          createdAt: qd.createdAt || 0
+          createdAt: qd.createdAt || 0,
+          votes: Object.keys(qd.upvoters || {}).length
         };
       });
       if (discussionMode) renderQuestionsPanel();
@@ -1891,7 +1915,8 @@ import { firebaseConfig } from "./firebase-config.js";
   // ---------- Student: raise-hand pad + ticket ----------
   function renderStudentWait(code, className, name, seat) {
     setTopbar('student');
-    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div><div id="pollSection" style="display:none;"></div><div id="questionSection" style="display:none;"></div>');
+    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div><div id="pollSection" style="display:none;"></div><div id="questionSection" style="display:none;"></div><div id="classQsSection" style="display:none;"></div>');
+    var classQsEl = root.querySelector('#classQsSection');
     var bannerEl = root.querySelector('#announceBanner');
     var inner = root.querySelector('#waitInner');
     var questionSectionEl = root.querySelector('#questionSection');
@@ -1983,15 +2008,62 @@ import { firebaseConfig } from "./firebase-config.js";
       document.getElementById('blockedLeave').addEventListener('click', leaveClass);
     }
 
+    // ---- Questions from the class, with +1 (text only, no authors) ----
+    var classQs = [];
+    var classQsUnsub = null;
+    function stopClassQs() {
+      if (classQsUnsub) { classQsUnsub(); classQsUnsub = null; }
+      classQs = [];
+      classQsEl.style.display = 'none'; classQsEl.innerHTML = '';
+    }
+    activeUnsubs.push(stopClassQs);
+    function renderClassQs() {
+      var uid = myUid();
+      var list = classQs.filter(function (q) { return q.status === 'active'; })
+        .sort(function (a, b) { return (b.votes - a.votes) || (a.createdAt - b.createdAt); })
+        .slice(0, 15);
+      if (!list.length) { classQsEl.style.display = 'none'; classQsEl.innerHTML = ''; return; }
+      classQsEl.style.display = 'block';
+      classQsEl.innerHTML = '<div class="question-box"><h3>Questions from the class</h3>' + list.map(function (q) {
+        var mine = !!(uid && q.upvoters[uid]);
+        return '<div class="q-item"><div class="q-content"><div class="q-text">' + esc(q.text) + '</div></div>' +
+          '<div class="q-actions"><button class="plus-one' + (mine ? ' on' : '') + '" data-id="' + esc(q.id) + '" aria-pressed="' + mine + '" title="I have this question too">&#9650; ' + q.votes + '</button></div></div>';
+      }).join('') + '</div>';
+      classQsEl.querySelectorAll('.plus-one').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var q = classQs.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0];
+          if (!q || !uid) return;
+          var up = Object.assign({}, q.upvoters);
+          if (up[uid]) delete up[uid]; else up[uid] = true;
+          b.disabled = true;
+          questionsCol(code).doc(q.id).update({ upvoters: up }).catch(function () { showToast('Could not save that.'); }).then(function () { b.disabled = false; });
+        });
+      });
+    }
+    function startClassQs() {
+      if (classQsUnsub) return;
+      classQsUnsub = questionsCol(code).orderBy('createdAt', 'asc').onSnapshot(function (snap) {
+        classQs = snap.docs.map(function (d) {
+          var x = d.data() || {};
+          var up = x.upvoters || {};
+          return { id: d.id, text: x.text || '', status: x.status || 'active', createdAt: x.createdAt || 0, upvoters: up, votes: Object.keys(up).length };
+        });
+        renderClassQs();
+      }, function () {});
+    }
+
     function updateQuestionSection() {
       if (studentBlocked) {
         questionSectionEl.style.display = 'none';
+        stopClassQs();
         return;
       }
       if (!studentDiscussionMode) {
         questionSectionEl.style.display = 'none';
+        stopClassQs();
         return;
       }
+      startClassQs();
       questionSectionEl.style.display = 'block';
       questionSectionEl.className = 'question-section';
 
@@ -2432,6 +2504,217 @@ import { firebaseConfig } from "./firebase-config.js";
     }).catch(function () {
       mount('<div class="card"><h2>Can&rsquo;t connect</h2><div class="sub">Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.</div></div>');
     });
+  }
+
+  // ---------- Spanish (auto-detected, switchable from the top bar) ----------
+  // The UI is written in English; when Spanish is on, this table translates
+  // exact strings (and a few patterns for counts) as they appear on the page.
+  var ES = {
+    'Suggest something': 'Enviar sugerencia',
+    'Bugs, ideas, anything -- goes straight to the person running this app.': 'Errores, ideas, lo que sea: le llega directamente a quien administra esta app.',
+    'What would make this better?': '¿Qué mejoraría esto?',
+    'Send': 'Enviar',
+    'Thanks — sent.': 'Gracias, enviado.',
+    'Raise a hand from anywhere in the room.': 'Levanta la mano desde cualquier lugar del salón.',
+    'Anyone can tap in from their own device and line up in order. One live queue instead of a sea of hands.': 'Cualquiera puede unirse desde su propio dispositivo y hacer fila en orden. Una sola fila en vivo en lugar de un mar de manos.',
+    'I’m': 'Soy',
+    'the teacher': 'docente', 'a TA': 'asistente', 'an organizer': 'organizador(a)', 'the host': 'anfitrión(a)', 'a facilitator': 'facilitador(a)', 'an instructor': 'instructor(a)',
+    'a student': 'estudiante', 'a participant': 'participante', 'an attendee': 'asistente', 'a learner': 'aprendiz', 'a team member': 'integrante del equipo',
+    'Start a session, share the code, and watch the queue update in real time.': 'Inicia una sesión, comparte el código y mira la fila actualizarse en tiempo real.',
+    'Enter your code, then press space or tap the button to raise your hand.': 'Ingresa tu código y luego presiona espacio o toca el botón para levantar la mano.',
+    'Teacher': 'Docente', 'Student': 'Estudiante', 'Switch role': 'Cambiar de rol',
+    'Start a session': 'Iniciar una sesión',
+    'Give your class a name so students recognize the right code, then share it out loud or on the board.': 'Ponle un nombre a tu clase para que los estudiantes reconozcan el código correcto y compártelo en voz alta o en el pizarrón.',
+    'Class name': 'Nombre de la clase', '(optional)': '(opcional)',
+    'Start session': 'Iniciar sesión',
+    'Reopening a session from another device?': '¿Reabrir una sesión desde otro dispositivo?',
+    'Resume with a code': 'Reanudar con un código',
+    'Reopen code': 'Código de reapertura',
+    'The 12-character reopen code shown on your board (the 4-character class code plus your 8-character private key).': 'El código de reapertura de 12 caracteres que aparece en tu tablero (el código de clase de 4 caracteres más tu clave privada de 8).',
+    'Resume session': 'Reanudar sesión',
+    'Checking…': 'Comprobando…', 'Starting…': 'Iniciando…',
+    'Waiting for students…': 'Esperando estudiantes…',
+    'Untitled session': 'Sesión sin título',
+    'Show my reopen code': 'Mostrar mi código de reapertura',
+    'Hide reopen code ·': 'Ocultar código de reapertura ·',
+    'Copy co-host link': 'Copiar enlace de coanfitrión',
+    'Copies a link that opens the resume form for a co-host or TA': 'Copia un enlace que abre el formulario de reanudación para un coanfitrión o asistente',
+    'Class code': 'Código de clase',
+    'New-hand chime': 'Sonido de mano nueva', 'New-hand chime on — click to mute': 'Sonido activado: clic para silenciar', 'New-hand chime muted — click to turn on': 'Sonido silenciado: clic para activar',
+    'Toggle new-hand chime': 'Activar o desactivar el sonido',
+    'Side-by-side layout': 'Diseño en dos columnas', 'Switch to side-by-side layout': 'Cambiar a dos columnas', 'Switch to stacked layout': 'Cambiar a una columna', 'Toggle layout': 'Cambiar diseño',
+    'Show student notes': 'Mostrar notas de estudiantes', 'Toggle note visibility': 'Mostrar u ocultar notas',
+    'Session stats': 'Estadísticas de la sesión',
+    'Show QR code to join': 'Mostrar código QR para unirse', 'Copy code': 'Copiar código', 'Board settings': 'Ajustes del tablero',
+    'Student Questions': 'Preguntas de los estudiantes',
+    'Clear questions': 'Borrar preguntas', 'Clear hands': 'Bajar todas las manos',
+    'Questions hidden for projector —': 'Preguntas ocultas para el proyector —', 'show them': 'mostrarlas',
+    'Hide questions (projector mode)': 'Ocultar preguntas (modo proyector)', 'Toggle question visibility': 'Mostrar u ocultar preguntas',
+    'Roster': 'Lista de asistencia', 'CSV': 'CSV',
+    'Only you can see this. It’s deleted when you turn Roster off or end the session.': 'Solo tú puedes ver esto. Se borra al desactivar la lista o terminar la sesión.',
+    'Students appear here as they join.': 'Los estudiantes aparecen aquí al unirse.',
+    'Poll': 'Encuesta', 'Poll results': 'Resultados de la encuesta', 'Yes / No': 'Sí / No', '+ Option': '+ Opción', 'Start poll': 'Iniciar encuesta',
+    'Ask the class a question': 'Haz una pregunta a la clase',
+    'Votes are anonymous on screen. Starting a new poll replaces the last one.': 'Los votos son anónimos en pantalla. Iniciar una encuesta nueva reemplaza la anterior.',
+    'Close poll': 'Cerrar encuesta', 'New poll': 'Encuesta nueva',
+    'Tap an answer. Your vote is anonymous on screen.': 'Toca una respuesta. Tu voto es anónimo en pantalla.',
+    'Vote saved. Tap another answer to change it.': 'Voto guardado. Toca otra respuesta para cambiarlo.',
+    'Announcement': 'Anuncio', 'None posted': 'Ninguno publicado',
+    'Students can dismiss it': 'Los estudiantes pueden cerrarlo', 'Auto-clear after a few minutes': 'Se borra solo tras unos minutos', 'Stays until I clear it': 'Permanece hasta que yo lo borre',
+    'e.g. Quiz starts in 5 minutes': 'p. ej. El examen empieza en 5 minutos',
+    'Post': 'Publicar', 'Clear': 'Borrar', 'Close': 'Cerrar', 'Undo': 'Deshacer', 'Dismiss': 'Descartar',
+    'End session': 'Terminar sesión', 'Tap again to confirm': 'Toca de nuevo para confirmar', 'Confirm?': '¿Confirmar?',
+    'Blocked this session': 'Bloqueados en esta sesión', 'Blocks end with this session.': 'Los bloqueos terminan con esta sesión.', 'Unblock': 'Desbloquear', 'No one is blocked.': 'Nadie está bloqueado.',
+    'Block': 'Bloquear', 'Remove and block this student for the rest of this session': 'Quitar y bloquear a este estudiante por el resto de la sesión',
+    'No one is waiting. The queue fills up here as hands go up.': 'Nadie está esperando. La fila se llena aquí a medida que suben las manos.',
+    'Show note': 'Mostrar nota', 'hide': 'ocultar', 'waiting': 'esperando', 'Next': 'Siguiente', 'Mark helped': 'Marcar atendido',
+    'hands raised': 'manos levantadas', 'marked helped': 'atendidos', 'average wait': 'espera promedio', 'longest wait': 'espera más larga',
+    'Kept only in this browser for up to 24 hours. Never uploaded.': 'Se guarda solo en este navegador hasta 24 horas. Nunca se sube.',
+    'Download CSV': 'Descargar CSV',
+    'No questions yet — students can type questions from their devices.': 'Aún no hay preguntas: los estudiantes pueden escribirlas desde sus dispositivos.',
+    '✓ Answered': '✓ Respondida', 'Skip →': 'Omitir →', '↩ Move back': '↩ Devolver',
+    'Mark answered': 'Marcar como respondida', 'Skip for now': 'Omitir por ahora',
+    'Mute this student from posting questions': 'Silenciar a este estudiante para que no publique preguntas', 'Unmute this student': 'Quitar silencio a este estudiante',
+    'Standard': 'Estándar', 'Discussion': 'Discusión', 'Attendance roster': 'Lista de asistencia', 'Polls': 'Encuestas',
+    'Adds student questions': 'Agrega preguntas de estudiantes', 'Lists who joined, with CSV export': 'Muestra quién se unió, con exportación a CSV', 'Quick live polls for the class': 'Encuestas rápidas en vivo para la clase',
+    'Standard ✓': 'Estándar ✓', 'Raised hands and announcements (always on)': 'Manos levantadas y anuncios (siempre activo)', 'Raised hands and announcements': 'Manos levantadas y anuncios',
+    'Join your class': 'Únete a tu clase',
+    'Enter the code your teacher shared, then tell them who you are.': 'Ingresa el código que compartió tu docente y luego dile quién eres.',
+    'Name': 'Nombre', 'Seat number': 'Número de asiento', 'Join class': 'Unirme a la clase',
+    'e.g. Jordan': 'p. ej. Jordan', 'e.g. 14': 'p. ej. 14', 'e.g. Period 3 – ECE 175': 'p. ej. Periodo 3 – ECE 175', 'CODE': 'CÓDIGO', '12 CHARACTERS': '12 CARACTERES',
+    'Fill in one or both — whatever your teacher will recognize you by. A first name or nickname is fine; it’s visible to your teacher and anyone with the class code.': 'Llena uno o ambos: lo que tu docente reconozca. Un nombre de pila o apodo está bien; lo ven tu docente y cualquiera que tenga el código de clase.',
+    'Removed from this session': 'Te quitaron de esta sesión',
+    'Your teacher has removed you from this session. Talk to them if you think this is a mistake.': 'Tu docente te quitó de esta sesión. Habla con esa persona si crees que fue un error.',
+    'Leave class': 'Salir de la clase',
+    'Questions from the class': 'Preguntas de la clase', 'I have this question too': 'Yo también tengo esta pregunta',
+    'You’ve been muted from posting questions in this session.': 'Te silenciaron: no puedes publicar preguntas en esta sesión.',
+    'Ask a question': 'Haz una pregunta',
+    'Type your question for the teacher…': 'Escribe tu pregunta para el docente…',
+    'Ask anonymously (your teacher won’t see your name)': 'Preguntar de forma anónima (tu docente no verá tu nombre)',
+    'Submit question': 'Enviar pregunta',
+    'Raise hand': 'Levantar la mano', 'or press': 'o presiona', 'Space': 'Espacio',
+    'Quick question': 'Pregunta rápida', 'Stuck': 'Atascado', 'Check my work': 'Revisa mi trabajo', 'What kind of help (optional)': 'Qué tipo de ayuda (opcional)',
+    '+ Add a note to yourself': '+ Agrega una nota para ti', 'Edit your note': 'Editar tu nota',
+    'What did you want to ask or remember?': '¿Qué querías preguntar o recordar?',
+    'Let my teacher see this note too': 'Que mi docente también vea esta nota',
+    'Not your class? Switch': '¿No es tu clase? Cambiar',
+    'Queue cleared': 'Fila borrada', 'Your teacher cleared the queue. Raise your hand again if you still need help.': 'Tu docente borró la fila. Levanta la mano otra vez si aún necesitas ayuda.',
+    'You’ve been called!': '¡Te llamaron!', 'Head up — your teacher marked you as helped.': 'Adelante: tu docente te marcó como atendido.',
+    'You’re next in line': 'Eres el siguiente en la fila', 'Getting your spot in line…': 'Buscando tu lugar en la fila…',
+    'Waiting': 'Esperando', 'You’re listed as': 'Apareces como', 'Your note': 'Tu nota', 'Shared with your teacher': 'Compartida con tu docente',
+    'Lower hand': 'Bajar la mano', 'Lowering…': 'Bajando…',
+    'Connecting…': 'Conectando…', 'Setting up your session.': 'Preparando tu sesión.',
+    'Can’t connect': 'No se puede conectar',
+    'Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.': 'Revisa tu conexión a internet y recarga la página. Si sigue pasando, es posible que el sitio aún no esté bien configurado.',
+    'Light / dark': 'Claro / oscuro', 'Toggle light or dark': 'Cambiar entre claro y oscuro', 'Color theme': 'Tema de color',
+    'Ocean': 'Océano', 'Slate': 'Pizarra', 'Forest': 'Bosque', 'Sunset': 'Atardecer', 'Pink': 'Rosa',
+    'Join by QR code': 'Unirse con código QR', 'Blocked students': 'Estudiantes bloqueados', 'Session stats ': 'Estadísticas de la sesión',
+    'Privacy': 'Privacidad', 'Terms': 'Términos',
+    'You’re offline — reconnecting… Changes will sync when you’re back.': 'Sin conexión: reconectando… Los cambios se sincronizarán cuando vuelvas.',
+    'Anonymous': 'Anónimo',
+    // messages
+    'Could not send that. Try again.': 'No se pudo enviar. Inténtalo de nuevo.',
+    'Enter your full 12-character reopen code (4-character class code + 8-character private key).': 'Ingresa tu código de reapertura completo de 12 caracteres (código de clase de 4 + clave privada de 8).',
+    'No active session with that code.': 'No hay una sesión activa con ese código.',
+    'That reopen code doesn’t match this session.': 'Ese código de reapertura no coincide con esta sesión.',
+    'Co-host link copied. Anyone with it can run this board.': 'Enlace de coanfitrión copiado. Quien lo tenga puede manejar este tablero.',
+    'Code copied': 'Código copiado',
+    'QR code unavailable right now. Share the code instead.': 'El código QR no está disponible ahora. Comparte el código.',
+    'Could not build the QR code.': 'No se pudo crear el código QR.',
+    'Cleared': 'Borrado', 'Could not clear. Try again.': 'No se pudo borrar. Inténtalo de nuevo.',
+    'Could not end the session. Try again.': 'No se pudo terminar la sesión. Inténtalo de nuevo.',
+    'Could not clear the announcement.': 'No se pudo borrar el anuncio.',
+    'Write something to post first.': 'Escribe algo para publicar primero.',
+    'Announcement posted': 'Anuncio publicado', 'Could not post the announcement.': 'No se pudo publicar el anuncio.',
+    'Could not undo.': 'No se pudo deshacer.', 'Could not mark helped. Try again.': 'No se pudo marcar como atendido. Inténtalo de nuevo.',
+    'Blocked for this session': 'Bloqueado en esta sesión', 'Could not block. Try again.': 'No se pudo bloquear. Inténtalo de nuevo.', 'Could not unblock.': 'No se pudo desbloquear.',
+    'Lost the live connection. Reloading may help.': 'Se perdió la conexión en vivo. Recargar puede ayudar.',
+    'Could not change mode.': 'No se pudo cambiar el modo.',
+    'Type a question first.': 'Escribe una pregunta primero.', 'Add at least two options.': 'Agrega al menos dos opciones.',
+    'Could not start the poll.': 'No se pudo iniciar la encuesta.', 'Could not close the poll.': 'No se pudo cerrar la encuesta.', 'Could not reset the poll.': 'No se pudo reiniciar la encuesta.',
+    'Could not mark as answered.': 'No se pudo marcar como respondida.', 'Could not skip that question.': 'No se pudo omitir esa pregunta.',
+    'Could not update mute status.': 'No se pudo actualizar el silencio.', 'Could not move question back.': 'No se pudo devolver la pregunta.',
+    'Could not toggle question visibility.': 'No se pudo cambiar la visibilidad de las preguntas.', 'Could not show questions.': 'No se pudieron mostrar las preguntas.',
+    'Enter the class code your teacher gave you.': 'Ingresa el código de clase que te dio tu docente.',
+    'Enter a name, a seat number, or both so your teacher can recognize you.': 'Ingresa un nombre, un número de asiento o ambos para que tu docente te reconozca.',
+    'We couldn’t find that class. Double-check the code with your teacher.': 'No encontramos esa clase. Revisa el código con tu docente.',
+    'Something went wrong reaching that class. Try again.': 'Algo salió mal al conectar con esa clase. Inténtalo de nuevo.',
+    'Checking code…': 'Comprobando código…',
+    'Could not save your vote.': 'No se pudo guardar tu voto.', 'Could not save that.': 'No se pudo guardar.',
+    'Give it a few seconds before sending another question.': 'Espera unos segundos antes de enviar otra pregunta.',
+    'Question submitted!': '¡Pregunta enviada!', 'Could not submit question. Try again.': 'No se pudo enviar la pregunta. Inténtalo de nuevo.',
+    'Not signed in yet. Try again in a moment.': 'Aún no se inicia sesión. Inténtalo en un momento.',
+    'One moment before raising again.': 'Un momento antes de levantar la mano otra vez.',
+    'Could not raise your hand. Try again.': 'No se pudo levantar la mano. Inténtalo de nuevo.',
+    'This session has ended.': 'Esta sesión terminó.',
+    'Something went wrong checking that code.': 'Algo salió mal al comprobar ese código.'
+  };
+  var ES_PATTERNS = [
+    [/^(\d+) students? waiting$/, function (m) { return m[1] + (m[1] === '1' ? ' estudiante esperando' : ' estudiantes esperando'); }],
+    [/^of (\d+) waiting$/, function (m) { return 'de ' + m[1] + ' en espera'; }],
+    [/^(\d+) questions?$/, function (m) { return m[1] + (m[1] === '1' ? ' pregunta' : ' preguntas'); }],
+    [/^(\d+) joined$/, function (m) { return m[1] + (m[1] === '1' ? ' se unió' : ' se unieron'); }],
+    [/^Open · (\d+) votes?$/, function (m) { return 'Abierta · ' + m[1] + (m[1] === '1' ? ' voto' : ' votos'); }],
+    [/^Closed$/, function () { return 'Cerrada'; }],
+    [/^Blocked \((\d+)\)$/, function (m) { return 'Bloqueados (' + m[1] + ')'; }],
+    [/^([▸▾]) Skipped \((\d+)\)$/, function (m) { return m[1] + ' Omitidas (' + m[2] + ')'; }],
+    [/^Mode: (.+?)( \+\d+)? ▾$/, function (m) { var l = ES[m[1]] || m[1]; return 'Modo: ' + l + (m[2] || '') + ' ▾'; }],
+    [/^(.*) marked helped$/, function (m) { return m[1] + ' atendido'; }],
+    [/^(.*) · code$/, function (m) { return (ES[m[1]] || m[1]) + ' · código'; }],
+    [/^Your class$/, function () { return 'Tu clase'; }],
+    [/^· (\d+) waiting$/, function (m) { return '· ' + m[1] + ' esperando'; }],
+    [/^Seat (.+)$/, function (m) { return 'Asiento ' + m[1]; }],
+    [/^(.+) · Seat (.+)$/, function (m) { return m[1] + ' · Asiento ' + m[2]; }],
+    [/^Option (\d+)$/, function (m) { return 'Opción ' + m[1]; }],
+    [/^Busiest: (.+) \((\d+) hands? in 10 min\)$/, function (m) { return 'Más movimiento: ' + m[1] + ' (' + m[2] + (m[2] === '1' ? ' mano' : ' manos') + ' en 10 min)'; }],
+    [/^Scan to join · (.+)$/, function (m) { return 'Escanea para unirte · ' + m[1]; }],
+    [/^Code: (.+)$/, function (m) { return 'Código: ' + m[1]; }],
+    [/^Please wait (.+)$/, function (m) { return 'Espera ' + m[1]; }]
+  ];
+  var LANG = currentLang();
+  function esFor(t) {
+    if (Object.prototype.hasOwnProperty.call(ES, t)) return ES[t];
+    for (var i = 0; i < ES_PATTERNS.length; i++) {
+      var m = t.match(ES_PATTERNS[i][0]);
+      if (m) return ES_PATTERNS[i][1](m);
+    }
+    return undefined;
+  }
+  var NO_TRANSLATE = '.q-text,.note,.v-note,.poll-q,.roster-chip,.poll-label span,textarea,input';
+  function translateTextNode(node) {
+    var raw = node.nodeValue;
+    var t = raw.trim();
+    if (!t) return;
+    if (node.parentElement && node.parentElement.closest(NO_TRANSLATE)) return;
+    var v = esFor(t);
+    if (v !== undefined && v !== t) node.nodeValue = raw.replace(t, function () { return v; });
+  }
+  function translateAttrs(el) {
+    ['placeholder', 'title', 'aria-label'].forEach(function (a) {
+      var val = el.getAttribute && el.getAttribute(a);
+      if (!val) return;
+      var v = esFor(val.trim());
+      if (v !== undefined && v !== val) el.setAttribute(a, v);
+    });
+  }
+  function translateTree(node) {
+    if (node.nodeType === 3) { translateTextNode(node); return; }
+    if (node.nodeType !== 1) return;
+    var tag = node.tagName;
+    if (tag === 'SCRIPT' || tag === 'STYLE') return;
+    translateAttrs(node);
+    for (var c = node.firstChild; c; c = c.nextSibling) translateTree(c);
+  }
+  if (LANG === 'es') {
+    document.documentElement.lang = 'es';
+    translateTree(document.body);
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) {
+        if (m.type === 'characterData') translateTextNode(m.target);
+        else if (m.type === 'attributes') translateAttrs(m.target);
+        else m.addedNodes.forEach(translateTree);
+      });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] });
   }
 
   var offlineBarEl = document.getElementById('offlineBar');
