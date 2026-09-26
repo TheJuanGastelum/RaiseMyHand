@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circuit Quest — Admin</title>
+  <link rel="stylesheet" href="css/pixel.css" />
+  <style>
+    body { padding: 20px; max-width: 900px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    #gate { text-align: center; margin-top: 80px; }
+    #app { display: none; }
+    .level-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px; }
+    .level-row + .level-row { border-top: 2px solid var(--border); }
+    .level-row .info { flex: 1; }
+    .level-row .actions { display: flex; gap: 6px; }
+    .level-row .actions button { padding: 6px 8px; font-size: 9px; }
+    textarea { width: 100%; min-height: 90px; font-family: monospace; font-size: 12px; }
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+    .field label { font-size: 10px; color: var(--text-dim); }
+    #config-fields { border: 2px dashed var(--border); padding: 12px; margin: 10px 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  </style>
+</head>
+<body>
+  <div id="gate" class="panel">
+    <h2>🔒 Admin Access</h2>
+    <p class="dim">This is a lightweight client-side gate for keeping casual visitors out —<br/>it is NOT real authentication. Anyone with dev tools can bypass it.</p>
+    <input id="passphrase" type="password" placeholder="passphrase" />
+    <button id="enter-btn" class="primary">Enter</button>
+    <p id="gate-error" class="dim" style="color:var(--danger);"></p>
+  </div>
+
+  <div id="app">
+    <header>
+      <h1>🛠 Level Admin</h1>
+      <div class="row">
+        <a class="btn" href="index.html">← Back to Game</a>
+      </div>
+    </header>
+
+    <div class="panel">
+      <div class="row" style="justify-content: space-between;">
+        <h3 style="margin:0;">Levels (in play order)</h3>
+        <div class="row">
+          <button id="add-btn" class="primary">+ New Level</button>
+          <button id="export-btn">Export JSON</button>
+          <button id="import-btn">Import JSON</button>
+          <button id="reset-btn" class="danger">Reset to Defaults</button>
+        </div>
+      </div>
+      <div id="level-list" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="panel" id="editor" style="display:none; margin-top:20px;">
+      <h3 id="editor-title">Edit Level</h3>
+      <div class="two-col">
+        <div class="field"><label>Topic</label><input id="f-topic" /></div>
+        <div class="field"><label>Title</label><input id="f-title" /></div>
+      </div>
+      <div class="field">
+        <label>Concept / lesson text (shown to the player before they solve it)</label>
+        <textarea id="f-concept"></textarea>
+      </div>
+      <div class="field">
+        <label>Puzzle type</label>
+        <select id="f-type">
+          <option value="ohms-law">Ohm's Law (solve for V, I, or R)</option>
+          <option value="series-circuit">Series Circuit (total R or total I)</option>
+          <option value="parallel-circuit">Parallel Circuit (total R or total I)</option>
+          <option value="kirchhoff-current">Kirchhoff's Current Law (unknown branch)</option>
+          <option value="rc-time-constant">RC Time Constant (capacitor)</option>
+        </select>
+      </div>
+      <div id="config-fields"></div>
+      <div class="two-col">
+        <div class="field"><label>Tolerance (fraction, e.g. 0.05 = 5%)</label><input id="f-tolerance" type="number" step="0.01" /></div>
+        <div class="field"><label>Hint text (optional)</label><input id="f-hint" /></div>
+      </div>
+      <div class="row">
+        <button id="save-btn" class="primary">Save Level</button>
+        <button id="cancel-btn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <input type="file" id="import-file" accept=".json" style="display:none;" />
+
+  <script src="js/engine.js"></script>
+  <script src="js/circuit-render.js"></script>
+  <script src="js/levels-data.js"></script>
+  <script src="js/level-store.js"></script>
+  <script src="js/puzzle-engine.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circuit Quest — Learn Electrical Engineering</title>
+  <link rel="stylesheet" href="css/pixel.css" />
+  <style>
+    body { padding: 20px; max-width: 900px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    #map { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .level-card { cursor: pointer; text-align: left; }
+    .level-card.locked { cursor: not-allowed; }
+    .level-card .topic { color: var(--accent2); font-size: 9px; display: block; margin-bottom: 6px; }
+    .level-card .title { font-size: 11px; display: block; margin-bottom: 8px; }
+    #puzzle-screen { display: none; }
+    #circuit-canvas { width: 100%; max-width: 480px; height: auto; background: #0a0b18; display: block; margin: 0 auto; }
+    #concept-text { white-space: pre-wrap; font-family: monospace; font-size: 13px; line-height: 1.8; color: var(--text); }
+    #feedback { min-height: 60px; }
+    #feedback.correct { color: var(--accent); }
+    #feedback.incorrect { color: var(--danger); }
+    .close-x { float: right; }
+    footer { margin-top: 30px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ Circuit Quest</h1>
+    <div class="row">
+      <span id="score-badge" class="badge">0 ★</span>
+      <button id="reset-btn" title="Reset progress">Reset</button>
+      <a class="btn" href="admin.html">Admin</a>
+    </div>
+  </header>
+
+  <section id="map-screen">
+    <p class="dim">Pick an unlocked level. Complete each one to unlock the next.</p>
+    <div id="map"></div>
+  </section>
+
+  <section id="puzzle-screen">
+    <button class="close-x" id="back-btn">← Back</button>
+    <h2 id="puzzle-title"></h2>
+    <span class="badge" id="puzzle-topic"></span>
+
+    <div class="panel stack" style="margin-top:16px;">
+      <p id="concept-text"></p>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <canvas id="circuit-canvas"></canvas>
+    </div>
+
+    <div class="panel stack" style="margin-top:16px;">
+      <div id="given-list" class="row"></div>
+      <div class="row">
+        <label id="answer-label" for="answer-input" style="flex-shrink:0;"></label>
+        <input id="answer-input" type="range" />
+        <span id="answer-readout" class="badge"></span>
+      </div>
+      <div class="row">
+        <button id="submit-btn" class="primary">Check Answer</button>
+        <button id="hint-btn">Hint (−1★)</button>
+      </div>
+      <p id="feedback"></p>
+    </div>
+  </section>
+
+  <footer class="dim">
+    Circuit Quest — a data-driven EE learning game. Levels are editable in the
+    <a href="admin.html">Admin panel</a>.
+  </footer>
+
+  <script src="js/engine.js"></script>
+  <script src="js/circuit-render.js"></script>
+  <script src="js/levels-data.js"></script>
+  <script src="js/level-store.js"></script>
+  <script src="js/puzzle-engine.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
