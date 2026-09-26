@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy – RaiseMyHand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --bg:#EEF4FB; --surface:#fff; --ink:#0C1A2B; --soft:#33475E; --line:#B9CBE0; --accent:#1F4E8C; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0E1D2E; --surface:#16283C; --ink:#F2F7FB; --soft:#C3D2D8; --line:#2C4763; --accent:#7FB0E8; }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:"Manrope",system-ui,sans-serif; line-height:1.65; }
+  main{ max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  a{ color:var(--accent); }
+  .back{ font-weight:700; text-decoration:none; font-size:.9rem; }
+  h1{ font-family:"Zilla Slab",serif; font-size:2.1rem; margin:18px 0 4px; }
+  h2{ font-family:"Zilla Slab",serif; font-size:1.3rem; margin:32px 0 6px; }
+  .meta{ color:var(--soft); font-size:.9rem; margin:0 0 20px; }
+  .summary{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 20px; margin:20px 0; }
+  .summary ul{ margin:8px 0 0; padding-left:20px; }
+  ul{ padding-left:22px; }
+  li{ margin:4px 0; }
+  table{ width:100%; border-collapse:collapse; font-size:.92rem; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  th,td{ text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color:var(--soft); }
+  tr:last-child td{ border-bottom:none; }
+  .foot{ margin-top:40px; color:var(--soft); font-size:.88rem; }
+</style>
+</head>
+<body>
+<main>
+<a class="back" href="./">&larr; RaiseMyHand</a>
+<h1>Privacy Policy</h1>
+<p class="meta">Effective September 26, 2026 &middot; Operated by [OPERATOR NAME] (&ldquo;we&rdquo;, &ldquo;us&rdquo;) &middot; Contact: [CONTACT EMAIL]</p>
+
+<div class="summary">
+  <strong>The short version</strong>
+  <ul>
+    <li>No accounts, no email addresses, no passwords, no ads, no analytics, no tracking across sites.</li>
+    <li>A student&rsquo;s name and seat are optional. Use a first name or nickname.</li>
+    <li>Anyone who has a class code can see that class&rsquo;s live queue and questions. Treat the code like a room number, not a secret.</li>
+    <li>Queue entries and questions are meant to be short-lived and are deleted when the teacher clears or ends the session, or after they expire.</li>
+    <li>We never sell or rent information.</li>
+  </ul>
+</div>
+
+<h2>1. What RaiseMyHand is</h2>
+<p>RaiseMyHand is a classroom tool. A teacher (or host) starts a session and shares a short class code; participants join from their own devices to raise a hand, send questions, and receive announcements. This policy explains what information the service handles and why.</p>
+
+<h2>2. Information we handle</h2>
+<table>
+  <tr><th>Information</th><th>Who provides it</th><th>Why</th></tr>
+  <tr><td>Name and/or seat number (each optional, at least one needed to raise a hand)</td><td>Participant</td><td>So the teacher can recognize who is asking for help.</td></tr>
+  <tr><td>Optional note attached to a raised hand</td><td>Participant, only if they choose &ldquo;let my teacher see this note&rdquo;</td><td>To share context with the teacher. Notes not shared stay on the participant&rsquo;s own device.</td></tr>
+  <tr><td>Questions (discussion mode), with the name/seat shown at the time</td><td>Participant</td><td>To show questions to the teacher.</td></tr>
+  <tr><td>Class name, class code, a short teacher key, announcement text, mode settings</td><td>Teacher</td><td>To run and reopen a session.</td></tr>
+  <tr><td>Random anonymous device ID</td><td>Generated automatically (Firebase Anonymous Authentication)</td><td>To allow one raised hand per device, to let a teacher mute or block a disruptive participant for a session, and to keep the service from being written to by unknown programs. It is not linked to your identity.</td></tr>
+  <tr><td>Timestamps (when a hand was raised, when a session was last used)</td><td>Generated automatically</td><td>Queue order, wait times, and cleanup.</td></tr>
+  <tr><td>Feedback messages (optional) and the role you select (teacher or student)</td><td>Anyone who submits the feedback form</td><td>To improve the service. Please do not include personal information.</td></tr>
+  <tr><td>Standard technical data such as IP address and browser type</td><td>Automatically, by our hosting and database providers</td><td>To deliver the service and keep it secure. We do not use it for profiling.</td></tr>
+</table>
+<p>We do not ask for email addresses, phone numbers, birth dates, photos, precise location, or government or school ID numbers, and we ask that you do not enter them.</p>
+
+<h2>3. Who can see what</h2>
+<ul>
+  <li><strong>Anyone with a class code</strong> can view that class&rsquo;s live queue (names, seat numbers, and any shared notes) and questions. This is how the classroom display works. Keep codes to the people in the room, and end the session when finished.</li>
+  <li><strong>Teachers</strong> can see the queue, questions, and any notes participants chose to share, and can remove, mute, or block participants for that session.</li>
+  <li><strong>Feedback messages</strong> are not shown to other users; they can be read only by the operator through the database console.</li>
+</ul>
+
+<h2>4. How long information is kept</h2>
+<ul>
+  <li><strong>Queue entries and questions:</strong> removed when a teacher lowers a hand, marks it helped, clears the queue or questions, or ends the session. Each also carries a 24-hour expiry, and expired items are cleaned up the next time someone opens that session. A session nobody opens again may keep its queue entries until cleanup runs.</li>
+  <li><strong>Session record</strong> (code, class name, teacher key, settings; no participant data): kept so a teacher can reuse the same code, until the teacher ends the session. A code left unused for a long period may be reclaimed for a new session, which deletes the old record.</li>
+  <li><strong>Mute and block lists:</strong> apply only to one session and are cleared when the session is reset, ended, or reclaimed.</li>
+  <li><strong>On your device:</strong> the app saves preferences (theme, layout), the last class you joined, your name and seat, draft notes, and a teacher&rsquo;s reopen details in your browser&rsquo;s local storage so the page can resume. You can clear this at any time in your browser settings.</li>
+  <li><strong>Feedback messages:</strong> kept until reviewed, then deleted or retained without identifying details.</li>
+</ul>
+
+<h2>5. Children and schools</h2>
+<p>RaiseMyHand is intended to be used in a classroom under a teacher&rsquo;s direction. It does not require accounts and collects little information. We do not knowingly collect personal information from a child under 13 for any purpose other than the classroom use described here, and we never use it for advertising or profiling.</p>
+<p>Teachers and schools are responsible for deciding whether this tool fits their school&rsquo;s policies and applicable laws (for example FERPA in the U.S., and COPPA for students under 13), and for obtaining any required authorization. To minimize data, we recommend students use first names or nicknames and that teachers avoid asking for anything more. If you believe a child&rsquo;s information was submitted in a way that should not have been, contact us and we will delete it.</p>
+
+<h2>6. Sharing</h2>
+<p>We do not sell or rent information, and we do not share it for advertising. We rely on these service providers to operate the site:</p>
+<ul>
+  <li><strong>Google (Firebase Hosting, Authentication, Cloud Firestore)</strong> &mdash; hosts the site and stores session data. Their handling is described in <a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase&rsquo;s privacy information</a>.</li>
+  <li><strong>Google Fonts</strong> &mdash; serves the site&rsquo;s typefaces, so your browser contacts Google when a page loads.</li>
+  <li><strong>jsDelivr</strong> &mdash; serves a small open-source library used to draw QR codes, so your browser contacts it when a page loads.</li>
+</ul>
+<p>We may disclose information if required by law or to protect the safety of users or the service.</p>
+
+<h2>7. Security</h2>
+<p>Traffic is encrypted in transit (HTTPS), and database access is restricted by security rules to the actions the app performs. No system is perfectly secure, and because class codes are meant to be shared in a room, they should not be treated as private. Do not enter sensitive information.</p>
+
+<h2>8. Your choices and requests</h2>
+<ul>
+  <li>Names, seats, and notes are optional; you can lower your hand or leave a class at any time, which removes your queue entry.</li>
+  <li>Because we do not keep accounts, we cannot look someone up by name. To request deletion of information, email us with the class code and approximate time, and we will remove what we can find.</li>
+  <li>Depending on where you live, you may have rights to access, correct, or delete personal information. Contact us to exercise them.</li>
+</ul>
+
+<h2>9. International use</h2>
+<p>Our providers operate data centers that may be outside your country. By using the service you understand your information may be processed there.</p>
+
+<h2>10. Changes</h2>
+<p>We may update this policy. The effective date above shows the latest version, and we will note material changes on the site.</p>
+
+<h2>11. Contact</h2>
+<p>Questions or requests: [CONTACT EMAIL].</p>
+
+<p class="foot"><a href="terms.html">Terms of Use</a> &middot; <a href="./">Back to RaiseMyHand</a></p>
+</main>
+</body>
+</html>

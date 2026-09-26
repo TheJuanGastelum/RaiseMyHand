@@ -642,11 +642,11 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="board-title">' +
           '<h2>' + esc(className || 'Untitled session') + '</h2>' +
           '<div class="sub" id="waitCount">Waiting for students&hellip;</div>' +
+          '<div class="mode-wrap"><button class="mode-pill" id="discussBtn" aria-haspopup="menu" aria-expanded="false">Mode: Standard &#9662;</button></div>' +
           (teacherKey ? '<button class="reopen-toggle" id="reopenToggle">Show my reopen code</button>' : '') +
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
-          '<button class="icon-btn" id="discussBtn" title="Discussion mode — click to enable student questions" aria-label="Toggle discussion mode">' + icons.chat + '</button>' +
           '<button class="icon-btn" id="qrBtn" title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
           '<button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button>' +
           '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
@@ -1070,13 +1070,35 @@ import { firebaseConfig } from "./firebase-config.js";
     var lastQuestions = [];
     var skippedOpen = false;
 
+    // Sessions open in Standard (raised hands + announcements). Extra
+    // capabilities are opt-in modes picked here, which keeps the default
+    // board minimal. Add new entries to MODES as features arrive.
+    var MODES = [
+      { id: 'standard', label: 'Standard', desc: 'Raised hands and announcements' },
+      { id: 'discussion', label: 'Discussion', desc: 'Adds student questions' }
+    ];
+    function currentModeId() { return discussionMode ? 'discussion' : 'standard'; }
+
     function updateDiscussBtn() {
-      discussBtn.innerHTML = icons.chat;
-      discussBtn.title = discussionMode
-        ? 'Discussion mode ON — click to turn off'
-        : 'Discussion mode — click to enable student questions';
-      discussBtn.style.color = discussionMode ? 'var(--accent)' : '';
-      discussBtn.style.background = discussionMode ? 'var(--accent-soft)' : '';
+      var m = MODES.filter(function (x) { return x.id === currentModeId(); })[0];
+      discussBtn.innerHTML = 'Mode: ' + esc(m.label) + ' &#9662;';
+      discussBtn.classList.toggle('is-active', currentModeId() !== 'standard');
+    }
+
+    var modeMenuEl = null;
+    function closeModeMenu() {
+      if (modeMenuEl) { modeMenuEl.remove(); modeMenuEl = null; }
+      discussBtn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', modeOutside, true);
+      document.removeEventListener('keydown', modeKey);
+    }
+    function modeOutside(e) { if (modeMenuEl && !modeMenuEl.contains(e.target) && e.target !== discussBtn) closeModeMenu(); }
+    function modeKey(e) { if (e.key === 'Escape') closeModeMenu(); }
+    activeUnsubs.push(closeModeMenu);
+
+    function setMode(id) {
+      var patch = { discussionMode: id === 'discussion' };
+      sessionDoc(code).update(patch).catch(function () { showToast('Could not change mode.'); });
     }
 
     function updateQVisBtn() {
@@ -1197,9 +1219,27 @@ import { firebaseConfig } from "./firebase-config.js";
     }
 
     discussBtn.addEventListener('click', function () {
-      sessionDoc(code).update({ discussionMode: !discussionMode }).catch(function () {
-        showToast('Could not toggle discussion mode.');
+      if (modeMenuEl) { closeModeMenu(); return; }
+      modeMenuEl = document.createElement('div');
+      modeMenuEl.className = 'mode-menu';
+      modeMenuEl.setAttribute('role', 'menu');
+      modeMenuEl.innerHTML = MODES.map(function (m) {
+        var on = m.id === currentModeId();
+        return '<button class="mode-opt' + (on ? ' on' : '') + '" role="menuitemradio" aria-checked="' + on + '" data-mode="' + m.id + '">' +
+          '<span class="mode-name">' + esc(m.label) + (on ? ' &#10003;' : '') + '</span>' +
+          '<span class="mode-desc">' + esc(m.desc) + '</span></button>';
+      }).join('');
+      discussBtn.parentNode.appendChild(modeMenuEl);
+      discussBtn.setAttribute('aria-expanded', 'true');
+      modeMenuEl.querySelectorAll('.mode-opt').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var id = b.getAttribute('data-mode');
+          closeModeMenu();
+          if (id !== currentModeId()) setMode(id);
+        });
       });
+      document.addEventListener('click', modeOutside, true);
+      document.addEventListener('keydown', modeKey);
     });
 
     qVisBtn.addEventListener('click', function () {
@@ -1313,7 +1353,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="field">' +
           '<label for="joinSeat">Seat number <span style="text-transform:none;font-weight:500;">(optional)</span></label>' +
           '<input type="text" id="joinSeat" maxlength="12" placeholder="e.g. 14">' +
-          '<div class="hint">Fill in one or both &mdash; whatever your teacher will recognize you by.</div>' +
+          '<div class="hint">Fill in one or both &mdash; whatever your teacher will recognize you by. A first name or nickname is fine; it&rsquo;s visible to your teacher and anyone with the class code.</div>' +
         '</div>' +
         '<button class="btn btn-raise" id="joinBtn">Join class</button>' +
       '</div>'
