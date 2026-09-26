@@ -1,0 +1,2 @@
+date_utc,firestore_reads,reads_pct_of_free,firestore_writes,writes_pct_of_free,firestore_deletes,deletes_pct_of_free,hosting_mb,hosting_pct_of_free,sessions_total,sessions_created_24h,sessions_active_24h,note
+2026-09-26,,,,,,,,,0,0,0,reads unavailable; writes unavailable; deletes unavailable; hosting unavailable
