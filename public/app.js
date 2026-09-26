@@ -236,6 +236,20 @@ import { firebaseConfig } from "./firebase-config.js";
 
   var KIND_LABELS = { question: 'Quick question', stuck: 'Stuck', check: 'Check my work' };
 
+  function pollBarsHtml(options, counts, total) {
+    return options.map(function (o, i) {
+      var c = counts[i] || 0;
+      var pct = total ? Math.round(c * 100 / total) : 0;
+      return '<div class="poll-row"><div class="poll-label"><span>' + esc(o) + '</span><b>' + c + '</b></div>' +
+        '<div class="poll-bar"><i style="width:' + pct + '%"></i></div></div>';
+    }).join('');
+  }
+
+  function optionCountsFromResults(p) {
+    var r = p.results || {};
+    return (p.options || []).map(function (o, i) { return r[String(i)] || 0; });
+  }
+
   function questionWho(q) {
     return (q.authorName || q.authorSeat) ? questionWho(q) : 'Anonymous';
   }
@@ -663,7 +677,7 @@ import { firebaseConfig } from "./firebase-config.js";
         }).map(function (d) { return col(code).doc(d.id).delete(); }));
       });
     }
-    return Promise.all([sweep(queueCol), sweep(questionsCol)]).catch(function () {});
+    return Promise.all([sweep(queueCol), sweep(questionsCol), sweep(rosterCol)]).catch(function () {});
   }
 
   function clearQuestions(code) {
@@ -720,6 +734,28 @@ import { firebaseConfig } from "./firebase-config.js";
             '<div id="skippedSection" style="display:none;">' +
               '<button class="skipped-toggle-btn" id="skippedToggleBtn"></button>' +
               '<div id="skippedQList" style="display:none;"></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="discuss-card roster-card" id="rosterCard" style="display:none;">' +
+            '<div class="discuss-head"><h3>Roster</h3><div class="discuss-actions"><span class="discuss-count" id="rosterCount">0 joined</span><button class="btn btn-ghost" id="rosterCsv" disabled>CSV</button></div></div>' +
+            '<div class="roster-list" id="rosterList"></div>' +
+            '<div class="qr-hint" style="text-align:left;margin:8px 0 0;">Only you can see this. It&rsquo;s deleted when you turn Roster off or end the session.</div>' +
+          '</div>' +
+          '<div class="discuss-card polls-card" id="pollsCard" style="display:none;">' +
+            '<div class="discuss-head"><h3>Poll</h3><span class="discuss-count" id="pollStatus"></span></div>' +
+            '<div id="pollBuilder">' +
+              '<input type="text" id="pollQ" maxlength="200" placeholder="Ask the class a question">' +
+              '<div class="poll-opts" id="pollOpts"></div>' +
+              '<div class="poll-actions">' +
+                '<button class="btn btn-ghost" id="pollAddOpt">+ Option</button>' +
+                '<button class="btn btn-ghost" id="pollYesNo">Yes / No</button>' +
+                '<button class="btn btn-primary" id="pollStart">Start poll</button>' +
+              '</div>' +
+              '<div class="qr-hint" style="text-align:left;margin:8px 0 0;">Votes are anonymous on screen. Starting a new poll replaces the last one.</div>' +
+            '</div>' +
+            '<div id="pollLive" style="display:none;">' +
+              '<div id="pollLiveBody"></div>' +
+              '<div class="poll-actions"><button class="btn btn-danger-ghost" id="pollCloseBtn">Close poll</button><button class="btn btn-ghost" id="pollNewBtn">New poll</button></div>' +
             '</div>' +
           '</div>' +
           '<div class="announce-card" id="announceCard">' +
@@ -960,6 +996,8 @@ import { firebaseConfig } from "./firebase-config.js";
         updateQVisBtn();
         discussCard.style.display = discussionMode ? 'block' : 'none';
         if (discussionMode) renderQuestionsPanel();
+        onFeatureData(data);
+        updateDiscussBtn();
       }
     });
     activeUnsubs.push(annUnsub);
@@ -1048,6 +1086,7 @@ import { firebaseConfig } from "./firebase-config.js";
       return sessionDoc(code).update({ blocked: nb }).then(function () {
         return Promise.all([
           queueCol(code).doc(uid).delete().catch(function () {}),
+          rosterCol(code).doc(uid).delete().catch(function () {}),
           questionsCol(code).get().then(function (snap) {
             return Promise.all(snap.docs.filter(function (d) { return (d.data() || {}).authorId === uid; })
               .map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
@@ -1342,16 +1381,23 @@ import { firebaseConfig } from "./firebase-config.js";
     // Sessions open in Standard (raised hands + announcements). Extra
     // capabilities are opt-in modes picked here, which keeps the default
     // board minimal. Add new entries to MODES as features arrive.
-    var MODES = [
-      { id: 'standard', label: 'Standard', desc: 'Raised hands and announcements' },
-      { id: 'discussion', label: 'Discussion', desc: 'Adds student questions' }
+    var rosterMode = false;
+    var pollsMode = false;
+    var FEATURES = [
+      { id: 'discussion', label: 'Discussion', desc: 'Adds student questions', field: 'discussionMode' },
+      { id: 'roster', label: 'Attendance roster', desc: 'Lists who joined, with CSV export', field: 'rosterMode' },
+      { id: 'polls', label: 'Polls', desc: 'Quick live polls for the class', field: 'pollsMode' }
     ];
-    function currentModeId() { return discussionMode ? 'discussion' : 'standard'; }
+    function featureOn(id) {
+      return id === 'discussion' ? discussionMode : id === 'roster' ? rosterMode : pollsMode;
+    }
+    function onFeatures() { return FEATURES.filter(function (f) { return featureOn(f.id); }); }
 
     function updateDiscussBtn() {
-      var m = MODES.filter(function (x) { return x.id === currentModeId(); })[0];
-      discussBtn.innerHTML = 'Mode: ' + esc(m.label) + ' &#9662;';
-      discussBtn.classList.toggle('is-active', currentModeId() !== 'standard');
+      var on = onFeatures();
+      var label = !on.length ? 'Standard' : on.length === 1 ? on[0].label : on[0].label + ' +' + (on.length - 1);
+      discussBtn.innerHTML = 'Mode: ' + esc(label) + ' &#9662;';
+      discussBtn.classList.toggle('is-active', on.length > 0);
     }
 
     var modeMenuEl = null;
@@ -1365,9 +1411,164 @@ import { firebaseConfig } from "./firebase-config.js";
     function modeKey(e) { if (e.key === 'Escape') closeModeMenu(); }
     activeUnsubs.push(closeModeMenu);
 
-    function setMode(id) {
-      var patch = { discussionMode: id === 'discussion' };
-      sessionDoc(code).update(patch).catch(function () { showToast('Could not change mode.'); });
+    function toggleFeature(id) {
+      var f = FEATURES.filter(function (x) { return x.id === id; })[0];
+      var turningOn = !featureOn(id);
+      var patch = {};
+      patch[f.field] = turningOn;
+      sessionDoc(code).update(patch).then(function () {
+        // Turning a data-collecting feature off removes what it collected.
+        if (!turningOn && id === 'roster') return deleteAllDocs(rosterCol, code);
+        if (!turningOn && id === 'polls') {
+          return deletePolls(code).then(function () { return sessionDoc(code).update({ pollId: null }); });
+        }
+      }).catch(function () { showToast('Could not change mode.'); });
+    }
+
+    // ---- Roster (only collected while the Roster feature is on) ----
+    var rosterCard = root.querySelector('#rosterCard');
+    var rosterUnsub = null;
+    var lastRoster = [];
+    function renderRoster() {
+      root.querySelector('#rosterCount').textContent = lastRoster.length + ' joined';
+      var list = root.querySelector('#rosterList');
+      list.innerHTML = lastRoster.length
+        ? lastRoster.map(function (d) { var x = d.data() || {}; return '<span class="roster-chip">' + esc(identityLabel(x.name, x.seat)) + '</span>'; }).join('')
+        : '<div class="discuss-empty">Students appear here as they join.</div>';
+      root.querySelector('#rosterCsv').disabled = !lastRoster.length;
+    }
+    function startRosterWatch() {
+      if (rosterUnsub) return;
+      rosterUnsub = rosterCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
+        lastRoster = snap.docs; renderRoster();
+      }, function () {});
+    }
+    function stopRosterWatch() {
+      if (rosterUnsub) { rosterUnsub(); rosterUnsub = null; }
+      lastRoster = [];
+    }
+    activeUnsubs.push(stopRosterWatch);
+    root.querySelector('#rosterCsv').addEventListener('click', function () {
+      var rows = [['Name', 'Seat', 'Joined at']];
+      lastRoster.forEach(function (d) { var x = d.data() || {}; rows.push([x.name || '', x.seat || '', new Date(x.joinedAt || 0).toLocaleString()]); });
+      var blob = new Blob([rows.map(function (r) { return r.map(csvCell).join(','); }).join('\r\n')], { type: 'text/csv' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'raisemyhand-roster-' + code + '.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    });
+
+    // ---- Polls ----
+    var pollsCard = root.querySelector('#pollsCard');
+    var currentPollId = null;
+    var pollUnsub = null;
+    var votesUnsub = null;
+    var pollData = null;
+    var pollCounts = [];
+    var pollTotal = 0;
+    var pollOptCount = 2;
+
+    function renderPollOptInputs(keep) {
+      var box = root.querySelector('#pollOpts');
+      var vals = keep || [];
+      var html = '';
+      for (var i = 0; i < pollOptCount; i++) {
+        html += '<input type="text" class="poll-opt" maxlength="60" placeholder="Option ' + (i + 1) + '" value="' + esc(vals[i] || '') + '">';
+      }
+      box.innerHTML = html;
+    }
+    function readPollInputs() {
+      return Array.prototype.map.call(root.querySelectorAll('.poll-opt'), function (i) { return i.value.trim(); });
+    }
+    function renderPollLive() {
+      var builder = root.querySelector('#pollBuilder');
+      var live = root.querySelector('#pollLive');
+      if (!currentPollId || !pollData) {
+        builder.style.display = 'block'; live.style.display = 'none';
+        root.querySelector('#pollStatus').textContent = '';
+        return;
+      }
+      builder.style.display = 'none'; live.style.display = 'block';
+      var open = pollData.status === 'open';
+      root.querySelector('#pollStatus').textContent = open ? 'Open · ' + pollTotal + (pollTotal === 1 ? ' vote' : ' votes') : 'Closed';
+      var counts = open ? pollCounts : optionCountsFromResults(pollData);
+      var total = counts.reduce(function (a, b) { return a + b; }, 0);
+      root.querySelector('#pollLiveBody').innerHTML =
+        '<div class="poll-q">' + esc(pollData.question) + '</div>' + pollBarsHtml(pollData.options || [], counts, total);
+      root.querySelector('#pollCloseBtn').style.display = open ? '' : 'none';
+    }
+    function stopPollWatch() {
+      if (pollUnsub) { pollUnsub(); pollUnsub = null; }
+      if (votesUnsub) { votesUnsub(); votesUnsub = null; }
+      pollData = null; pollCounts = []; pollTotal = 0;
+    }
+    activeUnsubs.push(stopPollWatch);
+    function watchPoll(id) {
+      stopPollWatch();
+      currentPollId = id;
+      if (!id) { renderPollLive(); return; }
+      pollUnsub = pollsCol(code).doc(id).onSnapshot(function (s) {
+        pollData = s.exists ? s.data() : null; renderPollLive();
+      }, function () {});
+      votesUnsub = votesCol(code, id).onSnapshot(function (snap) {
+        var n = (pollData && pollData.options ? pollData.options.length : 6);
+        var counts = [];
+        for (var i = 0; i < n; i++) counts.push(0);
+        snap.docs.forEach(function (d) { var c = (d.data() || {}).choice; if (typeof c === 'number' && counts[c] !== undefined) counts[c]++; });
+        pollCounts = counts;
+        pollTotal = snap.docs.length;
+        renderPollLive();
+      }, function () {});
+    }
+    function startPoll() {
+      var q = root.querySelector('#pollQ').value.trim();
+      var opts = readPollInputs().filter(Boolean);
+      if (!q) { showToast('Type a question first.'); return; }
+      if (opts.length < 2) { showToast('Add at least two options.'); return; }
+      var btn = root.querySelector('#pollStart');
+      btn.disabled = true;
+      var id = 'p' + Date.now();
+      deletePolls(code).then(function () {
+        return pollsCol(code).doc(id).set({ question: q, options: opts, status: 'open', createdAt: Date.now(), expireAt: expireTs() });
+      }).then(function () {
+        return sessionDoc(code).update({ pollId: id });
+      }).then(function () {
+        root.querySelector('#pollQ').value = '';
+        pollOptCount = 2; renderPollOptInputs([]);
+      }).catch(function () { showToast('Could not start the poll.'); }).then(function () { btn.disabled = false; });
+    }
+    function closePoll() {
+      if (!currentPollId || !pollData) return;
+      var results = {};
+      (pollData.options || []).forEach(function (o, i) { results[String(i)] = pollCounts[i] || 0; });
+      pollsCol(code).doc(currentPollId).update({ status: 'closed', results: results }).catch(function () { showToast('Could not close the poll.'); });
+    }
+    function newPoll() {
+      deletePolls(code).then(function () { return sessionDoc(code).update({ pollId: null }); }).catch(function () { showToast('Could not reset the poll.'); });
+    }
+    renderPollOptInputs([]);
+    root.querySelector('#pollAddOpt').addEventListener('click', function () {
+      if (pollOptCount >= 6) return;
+      var keep = readPollInputs(); pollOptCount++; renderPollOptInputs(keep);
+    });
+    root.querySelector('#pollYesNo').addEventListener('click', function () {
+      pollOptCount = 2; renderPollOptInputs(['Yes', 'No']);
+    });
+    root.querySelector('#pollStart').addEventListener('click', startPoll);
+    root.querySelector('#pollCloseBtn').addEventListener('click', closePoll);
+    root.querySelector('#pollNewBtn').addEventListener('click', newPoll);
+
+    // Called with each session snapshot: shows/hides feature cards and
+    // starts or stops the watchers that feed them.
+    function onFeatureData(data) {
+      rosterMode = !!data.rosterMode;
+      pollsMode = !!data.pollsMode;
+      rosterCard.style.display = rosterMode ? 'block' : 'none';
+      pollsCard.style.display = pollsMode ? 'block' : 'none';
+      if (rosterMode) startRosterWatch(); else stopRosterWatch();
+      var pid = pollsMode ? (data.pollId || null) : null;
+      if (pid !== currentPollId) watchPoll(pid);
     }
 
     function updateQVisBtn() {
@@ -1492,19 +1693,23 @@ import { firebaseConfig } from "./firebase-config.js";
       modeMenuEl = document.createElement('div');
       modeMenuEl.className = 'mode-menu';
       modeMenuEl.setAttribute('role', 'menu');
-      modeMenuEl.innerHTML = MODES.map(function (m) {
-        var on = m.id === currentModeId();
-        return '<button class="mode-opt' + (on ? ' on' : '') + '" role="menuitemradio" aria-checked="' + on + '" data-mode="' + m.id + '">' +
-          '<span class="mode-name">' + esc(m.label) + (on ? ' &#10003;' : '') + '</span>' +
-          '<span class="mode-desc">' + esc(m.desc) + '</span></button>';
-      }).join('');
+      modeMenuEl.innerHTML =
+        '<div class="mode-opt on mode-base" role="menuitem" aria-disabled="true">' +
+          '<span class="mode-name">Standard &#10003;</span>' +
+          '<span class="mode-desc">Raised hands and announcements (always on)</span></div>' +
+        FEATURES.map(function (m) {
+          var on = featureOn(m.id);
+          return '<button class="mode-opt' + (on ? ' on' : '') + '" role="menuitemcheckbox" aria-checked="' + on + '" data-mode="' + m.id + '">' +
+            '<span class="mode-name">' + esc(m.label) + (on ? ' &#10003;' : '') + '</span>' +
+            '<span class="mode-desc">' + esc(m.desc) + '</span></button>';
+        }).join('');
       discussBtn.parentNode.appendChild(modeMenuEl);
       discussBtn.setAttribute('aria-expanded', 'true');
-      modeMenuEl.querySelectorAll('.mode-opt').forEach(function (b) {
+      modeMenuEl.querySelectorAll('button.mode-opt').forEach(function (b) {
         b.addEventListener('click', function () {
           var id = b.getAttribute('data-mode');
           closeModeMenu();
-          if (id !== currentModeId()) setMode(id);
+          toggleFeature(id);
         });
       });
       document.addEventListener('click', modeOutside, true);
@@ -1686,10 +1891,11 @@ import { firebaseConfig } from "./firebase-config.js";
   // ---------- Student: raise-hand pad + ticket ----------
   function renderStudentWait(code, className, name, seat) {
     setTopbar('student');
-    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div><div id="questionSection" style="display:none;"></div>');
+    var root = mount('<div id="announceBanner" style="display:none;"></div><div id="waitInner"></div><div id="pollSection" style="display:none;"></div><div id="questionSection" style="display:none;"></div>');
     var bannerEl = root.querySelector('#announceBanner');
     var inner = root.querySelector('#waitInner');
     var questionSectionEl = root.querySelector('#questionSection');
+    var pollSectionEl = root.querySelector('#pollSection');
     var keyHandler = null;
     var myTicketId = null;
     var bannerTimer = null;
@@ -1698,6 +1904,71 @@ import { firebaseConfig } from "./firebase-config.js";
     var studentMuted = false;
     var studentBlocked = false;
     var lastQuestionAt = 0;
+
+    // ---- Roster: written only while the teacher has Roster turned on ----
+    var rosterWritten = false;
+    function writeRoster() {
+      var uid = myUid();
+      if (!uid) return;
+      var e = { joinedAt: Date.now(), expireAt: expireTs() };
+      if (name && name.trim()) e.name = name.trim();
+      if (seat && seat.trim()) e.seat = seat.trim();
+      if (!e.name && !e.seat) return;
+      rosterCol(code).doc(uid).set(e).catch(function () { rosterWritten = false; });
+    }
+
+    // ---- Polls ----
+    var studentPollId = null;
+    var studentPollUnsub = null;
+    var studentVoteUnsub = null;
+    var studentPoll = null;
+    var myChoice = null;
+    function stopStudentPoll() {
+      if (studentPollUnsub) { studentPollUnsub(); studentPollUnsub = null; }
+      if (studentVoteUnsub) { studentVoteUnsub(); studentVoteUnsub = null; }
+      studentPoll = null; myChoice = null;
+    }
+    activeUnsubs.push(stopStudentPoll);
+    function renderStudentPoll() {
+      if (!studentPoll) { pollSectionEl.style.display = 'none'; pollSectionEl.innerHTML = ''; return; }
+      pollSectionEl.style.display = 'block';
+      var open = studentPoll.status === 'open';
+      var html = '<div class="question-box"><h3>' + (open ? 'Poll' : 'Poll results') + '</h3><div class="poll-q">' + esc(studentPoll.question) + '</div>';
+      if (open) {
+        html += (studentPoll.options || []).map(function (o, i) {
+          return '<button class="poll-choice' + (myChoice === i ? ' on' : '') + '" data-i="' + i + '">' + esc(o) + (myChoice === i ? ' &#10003;' : '') + '</button>';
+        }).join('') + '<div class="hint" style="margin-top:8px;">' + (myChoice === null ? 'Tap an answer. Your vote is anonymous on screen.' : 'Vote saved. Tap another answer to change it.') + '</div>';
+      } else {
+        var counts = optionCountsFromResults(studentPoll);
+        var total = counts.reduce(function (a, b) { return a + b; }, 0);
+        html += pollBarsHtml(studentPoll.options || [], counts, total);
+      }
+      pollSectionEl.innerHTML = html + '</div>';
+      pollSectionEl.querySelectorAll('.poll-choice').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = parseInt(b.getAttribute('data-i'), 10);
+          var uid = myUid();
+          if (!uid || !studentPollId) return;
+          votesCol(code, studentPollId).doc(uid).set({ choice: i, expireAt: expireTs() }).catch(function () { showToast('Could not save your vote.'); });
+        });
+      });
+    }
+    function watchStudentPoll(id) {
+      stopStudentPoll();
+      studentPollId = id;
+      if (!id) { renderStudentPoll(); return; }
+      studentPollUnsub = pollsCol(code).doc(id).onSnapshot(function (s) {
+        studentPoll = s.exists ? s.data() : null; renderStudentPoll();
+      }, function () {});
+      var uid = myUid();
+      if (uid) {
+        studentVoteUnsub = votesCol(code, id).doc(uid).onSnapshot(function (s) {
+          myChoice = s.exists ? (s.data() || {}).choice : null;
+          if (typeof myChoice !== 'number') myChoice = null;
+          renderStudentPoll();
+        }, function () {});
+      }
+    }
 
     function renderBlocked() {
       teardownKeys();
@@ -2126,6 +2397,11 @@ import { firebaseConfig } from "./firebase-config.js";
           renderPad(0);
         }
       }
+      var nowRoster = !!data.rosterMode;
+      if (nowRoster && !studentBlocked && !rosterWritten) { rosterWritten = true; writeRoster(); }
+      if (!nowRoster) rosterWritten = false;
+      var pid = (data.pollsMode && !studentBlocked) ? (data.pollId || null) : null;
+      if (pid !== studentPollId) watchStudentPoll(pid);
       updateQuestionSection();
     });
     activeUnsubs.push(sessUnsub);

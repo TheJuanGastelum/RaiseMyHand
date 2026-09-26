@@ -294,6 +294,21 @@
   .discuss-actions .btn{ width:auto; padding:5px 10px; font-size:.78rem; }
   @keyframes new-hand-flash{ 0%{ box-shadow:0 0 0 0 var(--accent); background:var(--accent-soft); } 100%{ box-shadow:0 0 0 12px transparent; } }
   .stub.flash-new{ animation:new-hand-flash 1.4s ease-out 2; }
+  .roster-list{ display:flex; flex-wrap:wrap; gap:6px; }
+  .roster-chip{ background:var(--surface-2); color:var(--ink); border-radius:999px; padding:3px 10px; font-size:.78rem; font-weight:600; }
+  .discuss-card .btn{ width:auto; }
+  .poll-opts{ display:grid; gap:6px; margin:8px 0; }
+  .poll-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .poll-actions .btn{ width:auto; padding:8px 14px; font-size:.84rem; }
+  .poll-q{ font-weight:700; margin-bottom:8px; }
+  .poll-row{ margin-bottom:8px; }
+  .poll-label{ display:flex; justify-content:space-between; gap:10px; font-size:.86rem; font-weight:600; margin-bottom:3px; }
+  .poll-bar{ height:10px; border-radius:6px; background:var(--surface-2); overflow:hidden; }
+  .poll-bar i{ display:block; height:100%; background:var(--accent); transition:width .3s ease; }
+  .poll-choice{ display:block; width:100%; text-align:left; background:var(--surface-2); color:var(--ink); border:2px solid transparent; border-radius:10px; padding:10px 12px; margin-top:8px; font-weight:600; font-family:inherit; cursor:pointer; }
+  .poll-choice:hover{ border-color:var(--accent); }
+  .poll-choice.on{ border-color:var(--accent); background:var(--accent-soft); }
+  .mode-base{ cursor:default; }
   .stats-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
   .stats-grid div{ background:var(--surface-2); border-radius:10px; padding:10px 12px; }
   .stats-grid b{ display:block; font-family:"Space Mono"; font-size:1.5rem; color:var(--accent); }
