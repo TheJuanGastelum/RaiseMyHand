@@ -19,21 +19,39 @@ import { firebaseConfig } from "./firebase-config.js";
   var auth = getAuth(firebaseApp);
   var firestore = getFirestore(firebaseApp);
 
+  // When the free daily Firestore quota runs out, every call fails with
+  // "resource-exhausted". Show one clear banner instead of scattered errors.
+  var quotaTimer = null;
+  function noteQuota(err) {
+    if (!err || !(err.code === 'resource-exhausted' || /quota/i.test(err.message || ''))) return;
+    var bar = document.getElementById('quotaBar');
+    if (!bar) return;
+    bar.hidden = false;
+    clearTimeout(quotaTimer);
+    quotaTimer = setTimeout(function () { bar.hidden = true; }, 60000);
+  }
+  function tap(promise) {
+    return promise.catch(function (err) { noteQuota(err); throw err; });
+  }
+  function tapErr(errCb) {
+    return function (err) { noteQuota(err); if (errCb) errCb(err); };
+  }
+
   function wrapDoc(ref) {
     return {
       id: ref.id,
       get: function () {
-        return getDoc(ref).then(function (snap) {
+        return tap(getDoc(ref).then(function (snap) {
           return { exists: snap.exists(), data: function () { return snap.data(); }, id: snap.id };
-        });
+        }));
       },
-      set: function (data) { return setDoc(ref, data); },
-      update: function (data) { return updateDoc(ref, data); },
-      delete: function () { return deleteDoc(ref); },
+      set: function (data) { return tap(setDoc(ref, data)); },
+      update: function (data) { return tap(updateDoc(ref, data)); },
+      delete: function () { return tap(deleteDoc(ref)); },
       onSnapshot: function (cb, errCb) {
         return onSnapshot(ref, function (snap) {
           cb({ exists: snap.exists(), data: function () { return snap.data(); }, id: snap.id });
-        }, errCb);
+        }, tapErr(errCb));
       }
     };
   }
@@ -49,11 +67,11 @@ import { firebaseConfig } from "./firebase-config.js";
     }
     var api = {
       doc: function (id) { return wrapDoc(id ? doc(ref, id) : doc(ref)); },
-      add: function (data) { return addDoc(ref, data).then(function (r) { return wrapDoc(r); }); },
+      add: function (data) { return tap(addDoc(ref, data).then(function (r) { return wrapDoc(r); })); },
       orderBy: function (field, dir) { q = query(q, orderBy(field, dir || "asc")); return api; },
-      get: function () { return getDocs(q).then(toSnap); },
+      get: function () { return tap(getDocs(q).then(toSnap)); },
       onSnapshot: function (cb, errCb) {
-        return onSnapshot(q, function (snap) { cb(toSnap(snap)); }, errCb);
+        return onSnapshot(q, function (snap) { cb(toSnap(snap)); }, tapErr(errCb));
       }
     };
     return api;
@@ -2611,6 +2629,7 @@ import { firebaseConfig } from "./firebase-config.js";
     'Ocean': 'Océano', 'Slate': 'Pizarra', 'Forest': 'Bosque', 'Sunset': 'Atardecer', 'Pink': 'Rosa',
     'Join by QR code': 'Unirse con código QR', 'Blocked students': 'Estudiantes bloqueados', 'Session stats ': 'Estadísticas de la sesión',
     'Privacy': 'Privacidad', 'Terms': 'Términos',
+    'RaiseMyHand has hit its free daily limit. It resets overnight (Pacific time), so please try again tomorrow.': 'RaiseMyHand alcanzó su límite diario gratuito. Se reinicia durante la noche (hora del Pacífico); inténtalo de nuevo mañana.',
     'You’re offline — reconnecting… Changes will sync when you’re back.': 'Sin conexión: reconectando… Los cambios se sincronizarán cuando vuelvas.',
     'Anonymous': 'Anónimo',
     // messages
