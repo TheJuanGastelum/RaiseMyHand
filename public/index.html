@@ -289,6 +289,10 @@
   .board-footer .btn{ width:auto; }
   .board-footer{ gap:10px; flex-wrap:wrap; }
   .discuss-actions .btn{ width:auto; padding:5px 10px; font-size:.78rem; }
+  @keyframes new-hand-flash{ 0%{ box-shadow:0 0 0 0 var(--accent); background:var(--accent-soft); } 100%{ box-shadow:0 0 0 12px transparent; } }
+  .stub.flash-new{ animation:new-hand-flash 1.4s ease-out 2; }
+  .undo-bar{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:1100; display:flex; align-items:center; gap:14px; background:var(--ink); color:var(--bg); padding:10px 12px 10px 18px; border-radius:999px; font-size:.86rem; font-weight:600; box-shadow:var(--shadow); max-width:calc(100vw - 32px); }
+  .undo-bar button{ background:var(--accent); color:var(--accent-ink); border:none; border-radius:999px; padding:6px 14px; font-weight:800; font-size:.8rem; cursor:pointer; font-family:inherit; }
   .site-foot{ text-align:center; padding:18px 16px 26px; font-size:.78rem; color:var(--ink-faint); }
   .site-foot a{ color:var(--ink-faint); text-underline-offset:2px; }
   .site-foot a:hover{ color:var(--accent); }

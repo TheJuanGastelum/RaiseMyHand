@@ -212,6 +212,8 @@ import { firebaseConfig } from "./firebase-config.js";
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
     eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
     eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2C11 5.1 11.5 5 12 5c6 0 9.5 7 9.5 7-.6 1.2-1.6 2.7-3 4.1M6.3 6.3C4 7.9 2.5 12 2.5 12s3.5 7 9.5 7c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
+    bellOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M8.2 4.6A6 6 0 0 1 18 9c0 3 .6 4.9 1.3 6M6 9c0 6-2.5 7.5-2.5 7.5H15"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
     hand: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 21.5c-.66 0-1.3-.26-1.77-.73l-4.3-4.3a1.6 1.6 0 0 1 2.26-2.26l1.81 1.81V9.2a1.5 1.5 0 0 1 3 0v3.8h.5V6.4a1.5 1.5 0 0 1 3 0v6.6h.5V7.6a1.5 1.5 0 0 1 3 0v5.4h.5V9.9a1.5 1.5 0 0 1 3 0v6.35c0 3.07-2.48 5.55-5.55 5.55H9.5z"/></svg>',
     sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.85 1.85M17.55 17.55l1.85 1.85M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.85-1.85M17.55 6.45l1.85-1.85"/></svg>',
     moon: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.4 14.7A8.6 8.6 0 0 1 9.3 3.6a.6.6 0 0 0-.75-.8A9.4 9.4 0 1 0 21.2 15.45a.6.6 0 0 0-.8-.75Z"/></svg>',
@@ -613,7 +615,9 @@ import { firebaseConfig } from "./firebase-config.js";
     function sweep(col) {
       return col(code).get().then(function (snap) {
         return Promise.all(snap.docs.filter(function (d) {
-          var e = (d.data() || {}).expireAt;
+          var dd = d.data() || {};
+          if (dd.status === 'helped') return true;
+          var e = dd.expireAt;
           return e && typeof e.toMillis === 'function' && e.toMillis() < now;
         }).map(function (d) { return col(code).doc(d.id).delete(); }));
       });
@@ -647,7 +651,8 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
-          '<button class="icon-btn" id="qrBtn" title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
+          '<button class="icon-btn" id="soundBtn" title="New-hand chime" aria-label="Toggle new-hand chime"></button>' +
+          '<button class="icon-btn" id="qrBtn"title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
           '<button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button>' +
           '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
@@ -915,6 +920,44 @@ import { firebaseConfig } from "./firebase-config.js";
       renderQueueRows(lastQueueDocs);
     });
 
+    var flashIds = {};
+
+    // "Mark helped" flags the ticket, lets the teacher undo for a few
+    // seconds, then deletes it. The student sees the called screen right
+    // away, and it flips back if the teacher undoes.
+    var UNDO_MS = 5000;
+    var pendingHelp = null;
+    var undoBarEl = null;
+    function hideUndoBar() { if (undoBarEl) { undoBarEl.remove(); undoBarEl = null; } }
+    function commitHelp() {
+      if (!pendingHelp) return;
+      clearTimeout(pendingHelp.timer);
+      var p = pendingHelp; pendingHelp = null;
+      hideUndoBar();
+      queueCol(code).doc(p.id).delete().catch(function () {});
+    }
+    activeUnsubs.push(commitHelp);
+    function markHelped(id, label, btn) {
+      commitHelp();
+      queueCol(code).doc(id).update({ status: 'helped' }).then(function () {
+        pendingHelp = { id: id, timer: setTimeout(commitHelp, UNDO_MS) };
+        undoBarEl = document.createElement('div');
+        undoBarEl.className = 'undo-bar';
+        undoBarEl.innerHTML = '<span>' + esc(label || 'Student') + ' marked helped</span><button id="undoHelpBtn">Undo</button>';
+        document.body.appendChild(undoBarEl);
+        undoBarEl.querySelector('#undoHelpBtn').addEventListener('click', function () {
+          if (!pendingHelp || pendingHelp.id !== id) return;
+          clearTimeout(pendingHelp.timer);
+          pendingHelp = null;
+          hideUndoBar();
+          queueCol(code).doc(id).update({ status: 'waiting' }).catch(function () { showToast('Could not undo.'); });
+        });
+      }).catch(function () {
+        if (btn) btn.disabled = false;
+        showToast('Could not mark helped. Try again.');
+      });
+    }
+
     // Blocks live on this session's doc only, so they end with the session
     // (End session, code reclaim, or the idle soft reset).
     function blockStudent(uid, label) {
@@ -1008,14 +1051,14 @@ import { firebaseConfig } from "./firebase-config.js";
               '</div>';
           }
         }
-        html += '<div class="stub' + (isNext ? ' next' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
+        html += '<div class="stub' + (isNext ? ' next' : '') + (flashIds[doc.id] ? ' flash-new' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
           '<div class="who"><div class="name" title="' + esc(identityLabel(d.name, d.seat)) + '">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
             '<div class="wait mono">waiting <span class="wait-time">0:00</span></div>' +
             noteHtml +
           '</div>' +
           (isNext ? '<span class="next-badge">Next</span>' : '') +
-          '<button class="help-btn" data-id="' + esc(doc.id) + '">Mark helped</button>' +
+          '<button class="help-btn" data-id="' + esc(doc.id) + '" data-label="' + esc(identityLabel(d.name, d.seat)) + '">Mark helped</button>' +
           (doc.id.length > 20 ? '<button class="block-btn" data-uid="' + esc(doc.id) + '" data-label="' + esc(identityLabel(d.name, d.seat)) + '" title="Remove and block this student for the rest of this session">Block</button>' : '') +
         '</div>';
       });
@@ -1024,9 +1067,7 @@ import { firebaseConfig } from "./firebase-config.js";
       listEl.querySelectorAll('.help-btn').forEach(function (b) {
         b.addEventListener('click', function () {
           b.disabled = true;
-          queueCol(code).doc(b.getAttribute('data-id')).delete().catch(function () {
-            b.disabled = false;
-          });
+          markHelped(b.getAttribute('data-id'), b.getAttribute('data-label'), b);
         });
       });
       listEl.querySelectorAll('.note-peek').forEach(function (b) {
@@ -1044,8 +1085,66 @@ import { firebaseConfig } from "./firebase-config.js";
       tickWaitTimes(listEl);
     }
 
+    // ---- New-hand alert: chime, flash, tab-title count ----
+    var soundOn = loadLS('rmh_sound_v1') !== 'off';
+    var soundBtn = root.querySelector('#soundBtn');
+    function updateSoundBtn() {
+      soundBtn.innerHTML = soundOn ? icons.bell : icons.bellOff;
+      soundBtn.title = soundOn ? 'New-hand chime on — click to mute' : 'New-hand chime muted — click to turn on';
+    }
+    updateSoundBtn();
+    var audioCtx = null;
+    function ensureAudio() {
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) { audioCtx = null; }
+    }
+    // Browsers only allow sound after a user gesture, so unlock on first click.
+    document.addEventListener('click', ensureAudio, { once: true });
+    soundBtn.addEventListener('click', function () {
+      soundOn = !soundOn;
+      saveLS('rmh_sound_v1', soundOn ? 'on' : 'off');
+      updateSoundBtn();
+      if (soundOn) { ensureAudio(); chime(); }
+    });
+    function chime() {
+      if (!soundOn || !audioCtx) return;
+      try {
+        var t = audioCtx.currentTime;
+        [660, 880].forEach(function (f, i) {
+          var o = audioCtx.createOscillator();
+          var g = audioCtx.createGain();
+          o.type = 'sine'; o.frequency.value = f;
+          g.gain.setValueAtTime(0.0001, t + i * 0.12);
+          g.gain.exponentialRampToValueAtTime(0.12, t + i * 0.12 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.12 + 0.35);
+          o.connect(g); g.connect(audioCtx.destination);
+          o.start(t + i * 0.12); o.stop(t + i * 0.12 + 0.4);
+        });
+      } catch (e) {}
+    }
+    function setTitleCount(n) { document.title = (n ? '(' + n + ') ' : '') + 'RaiseMyHand'; }
+    activeUnsubs.push(function () { setTitleCount(0); });
+
+    var knownIds = null;
     var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
-      renderQueueRows(snap.docs);
+      var waiting = snap.docs.filter(function (d) { return (d.data() || {}).status !== 'helped'; });
+      var ids = {};
+      snap.docs.forEach(function (d) { ids[d.id] = true; });
+      if (knownIds) {
+        var fresh = waiting.filter(function (d) { return !knownIds[d.id]; });
+        if (fresh.length) {
+          chime();
+          fresh.forEach(function (d) {
+            flashIds[d.id] = true;
+            setTimeout(function () { delete flashIds[d.id]; }, 2600);
+          });
+        }
+      }
+      knownIds = ids;
+      setTitleCount(waiting.length);
+      renderQueueRows(waiting);
     }, function () {
       showToast('Lost the live connection. Reloading may help.');
     });
@@ -1598,6 +1697,12 @@ import { firebaseConfig } from "./firebase-config.js";
         queueCol(code).doc(myUid).set(entry).catch(function (err) {
           return queueCol(code).doc(myUid).get().then(function (s) {
             if (!s.exists) throw err;
+            if ((s.data() || {}).status === 'helped') {
+              // A leftover already-helped ticket: replace it with a fresh hand.
+              return queueCol(code).doc(myUid).delete().then(function () {
+                return queueCol(code).doc(myUid).set(entry);
+              });
+            }
           });
         }).then(function () {
           myTicketId = myUid;
@@ -1648,7 +1753,7 @@ import { firebaseConfig } from "./firebase-config.js";
       setTimeout(function () { renderPad(0); refreshCount(); }, 3000);
     }
 
-    function renderCalled() {
+    function calledHtml() {
       teardownKeys();
       inner.innerHTML =
         '<div class="ticket">' +
@@ -1658,11 +1763,21 @@ import { firebaseConfig } from "./firebase-config.js";
             '<p>Head up &mdash; your teacher marked you as helped.</p>' +
           '</div>' +
         '</div>';
+    }
+
+    function renderCalled(alreadyShown) {
+      if (!alreadyShown) calledHtml();
       var saved = loadLS(LS_STUDENT) || {};
       saved.ticketId = null;
       saveLS(LS_STUDENT, saved);
       myTicketId = null;
-      setTimeout(function () { renderPad(0); refreshCount(); }, 2600);
+      setTimeout(function () { renderPad(0); refreshCount(); }, alreadyShown ? 1200 : 2600);
+    }
+
+    var ticketWatchers = [];
+    function stopTicketWatchers() {
+      ticketWatchers.forEach(function (u) { try { u(); } catch (e) {} });
+      ticketWatchers = [];
     }
 
     function refreshCount() {
@@ -1677,6 +1792,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
     function renderTicketed() {
       teardownKeys();
+      stopTicketWatchers();
       ticketBaseline = sessLoaded ? studentClearedAt : undefined;
       inner.innerHTML =
         '<div class="ticket" id="ticketCard">' +
@@ -1717,28 +1833,41 @@ import { firebaseConfig } from "./firebase-config.js";
       // leaving a ghost ticket visible on the teacher's board forever.
       // A doc-level listener on the exact path is immediately consistent.
       var ticketSeen = false;
+      var calledTentative = false;
       var watchedId = myTicketId;
       var ticketDocUnsub = queueCol(code).doc(myTicketId).onSnapshot(function (docSnap) {
         if (docSnap.exists) {
           ticketSeen = true;
+          var st = (docSnap.data() || {}).status;
+          if (st === 'helped' && !calledTentative) {
+            // Teacher marked us helped; they can still undo for a few seconds.
+            calledTentative = true;
+            calledHtml();
+          } else if (st !== 'helped' && calledTentative) {
+            calledTentative = false;
+            renderTicketed();
+          }
         } else if (ticketSeen) {
           // Doc existed and is now gone — teacher removed us. Give the
           // session doc's clearedAt a moment to arrive so a bulk clear
           // isn't mistaken for "you've been called".
           setTimeout(function () {
             if (myTicketId !== watchedId || studentBlocked) return;
-            if (ticketBaseline !== undefined && studentClearedAt !== ticketBaseline) renderCleared();
-            else renderCalled();
-          }, 700);
+            if (!calledTentative && ticketBaseline !== undefined && studentClearedAt !== ticketBaseline) renderCleared();
+            else renderCalled(calledTentative);
+          }, calledTentative ? 0 : 700);
         }
         // If !ticketSeen && !docSnap.exists: listener fired before the
         // create propagated (shouldn't happen on a doc watch, but guard it).
       }, function () {});
       activeUnsubs.push(ticketDocUnsub);
+      ticketWatchers.push(ticketDocUnsub);
 
-      var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snap) {
+      var unsub = queueCol(code).orderBy('joinedAt', 'asc').onSnapshot(function (snapAll) {
         var idx = -1;
         var mine = null;
+        var docsW = snapAll.docs.filter(function (d) { return (d.data() || {}).status !== 'helped'; });
+        var snap = { docs: docsW, size: docsW.length };
         snap.docs.forEach(function (doc, i) {
           if (doc.id === myTicketId) { idx = i; mine = doc; }
         });
@@ -1756,6 +1885,8 @@ import { firebaseConfig } from "./firebase-config.js";
         showToast('Lost the live connection. Reloading may help.');
       });
       activeUnsubs.push(unsub);
+      ticketWatchers.push(unsub);
+      if (tickHandle) clearInterval(tickHandle);
       tickHandle = setInterval(function () { tickWaitTimes(document.body); }, 1000);
     }
 
@@ -1802,7 +1933,7 @@ import { firebaseConfig } from "./firebase-config.js";
     var saved = loadLS(LS_STUDENT);
     if (saved && saved.ticketId && saved.code === code) {
       queueCol(code).doc(saved.ticketId).get().then(function (snap) {
-        if (snap.exists) {
+        if (snap.exists && (snap.data() || {}).status !== 'helped') {
           myTicketId = saved.ticketId;
           renderTicketed();
         } else {
