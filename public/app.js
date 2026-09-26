@@ -212,6 +212,7 @@ import { firebaseConfig } from "./firebase-config.js";
     check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
     eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5 12 5s9.5 7 9.5 7-3.5 7-9.5 7S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
     eyeOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.2C11 5.1 11.5 5 12 5c6 0 9.5 7 9.5 7-.6 1.2-1.6 2.7-3 4.1M6.3 6.3C4 7.9 2.5 12 2.5 12s3.5 7 9.5 7c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
     bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
     bellOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M8.2 4.6A6 6 0 0 1 18 9c0 3 .6 4.9 1.3 6M6 9c0 6-2.5 7.5-2.5 7.5H15"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
     hand: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 21.5c-.66 0-1.3-.26-1.77-.73l-4.3-4.3a1.6 1.6 0 0 1 2.26-2.26l1.81 1.81V9.2a1.5 1.5 0 0 1 3 0v3.8h.5V6.4a1.5 1.5 0 0 1 3 0v6.6h.5V7.6a1.5 1.5 0 0 1 3 0v5.4h.5V9.9a1.5 1.5 0 0 1 3 0v6.35c0 3.07-2.48 5.55-5.55 5.55H9.5z"/></svg>',
@@ -227,6 +228,10 @@ import { firebaseConfig } from "./firebase-config.js";
   };
 
   var KIND_LABELS = { question: 'Quick question', stuck: 'Stuck', check: 'Check my work' };
+
+  function questionWho(q) {
+    return (q.authorName || q.authorSeat) ? questionWho(q) : 'Anonymous';
+  }
 
   function identityLabel(name, seat) {
     var n = (name || '').trim();
@@ -653,11 +658,14 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
-          '<button class="icon-btn" id="soundBtn" title="New-hand chime" aria-label="Toggle new-hand chime"></button>' +
-          '<button class="icon-btn" id="qrBtn"title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
-          '<button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button>' +
-          '<button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button>' +
+          '<button class="icon-btn" id="qrBtn" title="Show QR code to join" aria-label="Show QR code to join">' + icons.qr + '</button>' +
           '<button class="icon-btn" id="copyBtn" title="Copy code" aria-label="Copy code">' + icons.copy + '</button>' +
+          '<button class="icon-btn" id="settingsBtn" title="Board settings" aria-label="Board settings" aria-haspopup="menu" aria-expanded="false">' + icons.gear + '</button>' +
+          '<div class="set-pop" id="settingsPop" hidden>' +
+            '<div class="set-row"><button class="icon-btn" id="soundBtn" title="New-hand chime" aria-label="Toggle new-hand chime"></button><span>New-hand chime</span></div>' +
+            '<div class="set-row"><button class="icon-btn" id="layoutBtn" title="Switch to side-by-side layout" aria-label="Toggle layout">' + icons.layout + '</button><span>Side-by-side layout</span></div>' +
+            '<div class="set-row"><button class="icon-btn" id="notesToggleBtn" title="Toggle note visibility" aria-label="Toggle note visibility"></button><span>Show student notes</span></div>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       '<div class="board-panels" id="boardPanels">' +
@@ -718,6 +726,25 @@ import { firebaseConfig } from "./firebase-config.js";
       } else {
         showToast('Code: ' + code);
       }
+    });
+
+    var settingsBtn = root.querySelector('#settingsBtn');
+    var settingsPop = root.querySelector('#settingsPop');
+    function closeSettings() {
+      settingsPop.hidden = true;
+      settingsBtn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('click', settingsOutside, true);
+      document.removeEventListener('keydown', settingsKey);
+    }
+    function settingsOutside(e) { if (!settingsPop.contains(e.target) && !settingsBtn.contains(e.target)) closeSettings(); }
+    function settingsKey(e) { if (e.key === 'Escape') closeSettings(); }
+    activeUnsubs.push(closeSettings);
+    settingsBtn.addEventListener('click', function () {
+      if (!settingsPop.hidden) { closeSettings(); return; }
+      settingsPop.hidden = false;
+      settingsBtn.setAttribute('aria-expanded', 'true');
+      document.addEventListener('click', settingsOutside, true);
+      document.addEventListener('keydown', settingsKey);
     });
 
     function joinUrl() {
@@ -1233,7 +1260,7 @@ import { firebaseConfig } from "./firebase-config.js";
             '<div class="q-item">' +
               '<div class="q-content">' +
                 '<div class="q-text">' + esc(q.text) + '</div>' +
-                '<div class="q-meta">' + esc(identityLabel(q.authorName, q.authorSeat)) + '</div>' +
+                '<div class="q-meta">' + esc(questionWho(q)) + '</div>' +
               '</div>' +
               '<div class="q-actions">' +
                 '<button class="q-answered" data-id="' + esc(q.id) + '" title="Mark answered">✓ Answered</button>' +
@@ -1241,7 +1268,7 @@ import { firebaseConfig } from "./firebase-config.js";
                 '<button class="q-mute' + (isMuted ? ' is-muted' : '') + '" data-id="' + esc(q.id) + '" data-uid="' + esc(q.authorId) + '" title="' + (isMuted ? 'Unmute this student' : 'Mute this student from posting questions') + '">' +
                   (isMuted ? icons.userUnmute + ' Unmute' : icons.userMute + ' Mute') +
                 '</button>' +
-                (q.authorId ? '<button class="block-btn" data-uid="' + esc(q.authorId) + '" data-label="' + esc(identityLabel(q.authorName, q.authorSeat)) + '" title="Remove and block this student for the rest of this session">Block</button>' : '') +
+                (q.authorId ? '<button class="block-btn" data-uid="' + esc(q.authorId) + '" data-label="' + esc(questionWho(q)) + '" title="Remove and block this student for the rest of this session">Block</button>' : '') +
               '</div>' +
             '</div>';
         });
@@ -1295,7 +1322,7 @@ import { firebaseConfig } from "./firebase-config.js";
               '<div class="q-item">' +
                 '<div class="q-content">' +
                   '<div class="q-text">' + esc(q.text) + '</div>' +
-                  '<div class="q-meta">' + esc(identityLabel(q.authorName, q.authorSeat)) + '</div>' +
+                  '<div class="q-meta">' + esc(questionWho(q)) + '</div>' +
                 '</div>' +
                 '<div class="q-actions"><button class="q-back" data-id="' + esc(q.id) + '">↩ Move back</button></div>' +
               '</div>';
@@ -1562,6 +1589,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="question-box">' +
           '<h3>Ask a question</h3>' +
           '<textarea id="qInput" maxlength="300" placeholder="Type your question for the teacher…"></textarea>' +
+          '<label class="note-share"><input type="checkbox" id="qAnon"> Ask anonymously (your teacher won&rsquo;t see your name)</label>' +
           '<button class="btn btn-primary q-submit-btn" id="qSubmitBtn">Submit question</button>' +
         '</div>';
 
@@ -1576,8 +1604,11 @@ import { firebaseConfig } from "./firebase-config.js";
         qSubmitBtn.disabled = true;
         var uid = auth.currentUser && auth.currentUser.uid;
         var entry = { text: text, authorId: uid || '', status: 'active', createdAt: Date.now(), expireAt: expireTs() };
-        if (name && name.trim()) entry.authorName = name.trim();
-        if (seat && seat.trim()) entry.authorSeat = seat.trim();
+        var anon = questionSectionEl.querySelector('#qAnon');
+        if (!(anon && anon.checked)) {
+          if (name && name.trim()) entry.authorName = name.trim();
+          if (seat && seat.trim()) entry.authorSeat = seat.trim();
+        }
         questionsCol(code).add(entry).then(function () {
           qInput.value = '';
           qSubmitBtn.disabled = false;

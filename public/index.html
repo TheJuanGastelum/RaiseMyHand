@@ -294,6 +294,11 @@
   .discuss-actions .btn{ width:auto; padding:5px 10px; font-size:.78rem; }
   @keyframes new-hand-flash{ 0%{ box-shadow:0 0 0 0 var(--accent); background:var(--accent-soft); } 100%{ box-shadow:0 0 0 12px transparent; } }
   .stub.flash-new{ animation:new-hand-flash 1.4s ease-out 2; }
+  .code-chip{ position:relative; }
+  .set-pop{ position:absolute; z-index:60; top:calc(100% + 8px); right:0; min-width:220px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:6px; }
+  .set-pop[hidden]{ display:none; }
+  .set-row{ display:flex; align-items:center; gap:12px; padding:5px 8px; border-radius:8px; font-size:.86rem; font-weight:600; color:var(--ink); }
+  .set-row:hover{ background:var(--surface-2); }
   .offline-bar{ position:fixed; top:0; left:0; right:0; z-index:1200; background:var(--danger); color:#fff; text-align:center; font-size:.84rem; font-weight:700; padding:8px 14px; }
   .offline-bar[hidden]{ display:none; }
   .kind-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }

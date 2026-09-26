@@ -56,7 +56,8 @@
   <tr><th>Information</th><th>Who provides it</th><th>Why</th></tr>
   <tr><td>Name and/or seat number (each optional, at least one needed to raise a hand)</td><td>Participant</td><td>So the teacher can recognize who is asking for help.</td></tr>
   <tr><td>Optional note attached to a raised hand</td><td>Participant, only if they choose &ldquo;let my teacher see this note&rdquo;</td><td>To share context with the teacher. Notes not shared stay on the participant&rsquo;s own device.</td></tr>
-  <tr><td>Questions (discussion mode), with the name/seat shown at the time</td><td>Participant</td><td>To show questions to the teacher.</td></tr>
+  <tr><td>Questions (discussion mode), with the name/seat shown at the time unless the participant chooses to ask anonymously</td><td>Participant</td><td>To show questions to the teacher. Anonymous questions omit the name and seat, but still carry the anonymous device ID so a teacher can mute or block abuse.</td></tr>
+  <tr><td>Optional hand type (quick question, stuck, or check my work)</td><td>Participant</td><td>To help the teacher decide who to help first.</td></tr>
   <tr><td>Class name, class code, a short teacher key, announcement text, mode settings</td><td>Teacher</td><td>To run and reopen a session.</td></tr>
   <tr><td>Random anonymous device ID</td><td>Generated automatically (Firebase Anonymous Authentication)</td><td>To allow one raised hand per device, to let a teacher mute or block a disruptive participant for a session, and to keep the service from being written to by unknown programs. It is not linked to your identity.</td></tr>
   <tr><td>Timestamps (when a hand was raised, when a session was last used)</td><td>Generated automatically</td><td>Queue order, wait times, and cleanup.</td></tr>
