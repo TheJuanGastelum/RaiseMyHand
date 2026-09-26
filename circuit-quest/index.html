@@ -21,6 +21,8 @@
     #feedback.incorrect { color: var(--danger); }
     .close-x { float: right; }
     footer { margin-top: 30px; text-align: center; }
+    .settings-link { color: var(--text-dim); font-size: 13px; text-decoration: none; opacity: 0.6; }
+    .settings-link:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -29,7 +31,6 @@
     <div class="row">
       <span id="score-badge" class="badge">0 ★</span>
       <button id="reset-btn" title="Reset progress">Reset</button>
-      <a class="btn" href="admin.html">Admin</a>
     </div>
   </header>
 
@@ -67,8 +68,8 @@
   </section>
 
   <footer class="dim">
-    Circuit Quest — a data-driven EE learning game. Levels are editable in the
-    <a href="admin.html">Admin panel</a>.
+    Circuit Quest — a data-driven EE learning game.
+    <br /><a href="admin.html" class="settings-link" title="Level editor">⚙ settings</a>
   </footer>
 
   <script src="js/ui.js"></script>
