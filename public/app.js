@@ -584,6 +584,7 @@ import { firebaseConfig } from "./firebase-config.js";
       return Promise.all([
         deleteAllDocs(queueCol, code),
         deleteAllDocs(questionsCol, code),
+        sessionDoc(code).update({ blocked: {} }),
         sessionDoc(code).update({ announcement: null, lastActiveAt: now }),
         sessionDoc(code).update({ discussionMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
       ]);
@@ -689,7 +690,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '</div>' +
         '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
       '</div>' +
-      '<div class="board-footer"><button class="btn btn-danger-ghost" id="clearHandsBtn">Clear hands</button><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
+      '<div class="board-footer"><button class="btn btn-ghost" id="blockedBtn" style="display:none;">Blocked (0)</button><button class="btn btn-danger-ghost" id="clearHandsBtn">Clear hands</button><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
     );
 
@@ -855,9 +856,18 @@ import { firebaseConfig } from "./firebase-config.js";
     // Discussion mode variables are declared later in this function but their
     // assignments happen on first snapshot fire, which is always async, so by
     // then the variables are in scope.
+    var blockedUsers = {};
+    var blockedBtn = root.querySelector('#blockedBtn');
+    function updateBlockedBtn() {
+      var n = Object.keys(blockedUsers).length;
+      blockedBtn.style.display = n ? '' : 'none';
+      blockedBtn.textContent = 'Blocked (' + n + ')';
+    }
     var annUnsub = sessionDoc(code).onSnapshot(function (snap) {
       if (!snap.exists) return;
       var data = snap.data() || {};
+      blockedUsers = data.blocked || {};
+      updateBlockedBtn();
       lastAnn = data.announcement || null;
       renderAnnounceState(lastAnn);
       // Discussion fields — picked up once the discussion section is wired up.
@@ -905,6 +915,77 @@ import { firebaseConfig } from "./firebase-config.js";
       renderQueueRows(lastQueueDocs);
     });
 
+    // Blocks live on this session's doc only, so they end with the session
+    // (End session, code reclaim, or the idle soft reset).
+    function blockStudent(uid, label) {
+      var nb = Object.assign({}, blockedUsers);
+      nb[uid] = label || 'Student';
+      return sessionDoc(code).update({ blocked: nb }).then(function () {
+        return Promise.all([
+          queueCol(code).doc(uid).delete().catch(function () {}),
+          questionsCol(code).get().then(function (snap) {
+            return Promise.all(snap.docs.filter(function (d) { return (d.data() || {}).authorId === uid; })
+              .map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
+          }).catch(function () {})
+        ]);
+      });
+    }
+
+    function bindBlockButtons(scope) {
+      scope.querySelectorAll('.block-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (b.dataset.confirm !== '1') {
+            b.dataset.confirm = '1';
+            b.textContent = 'Confirm?';
+            setTimeout(function () { if (b.isConnected) { b.dataset.confirm = ''; b.textContent = 'Block'; } }, 3000);
+            return;
+          }
+          b.disabled = true;
+          blockStudent(b.getAttribute('data-uid'), b.getAttribute('data-label')).then(function () {
+            showToast('Blocked for this session');
+          }).catch(function () {
+            b.disabled = false; b.textContent = 'Block';
+            showToast('Could not block. Try again.');
+          });
+        });
+      });
+    }
+
+    var blockedOverlay = null;
+    function closeBlocked() {
+      if (blockedOverlay) { blockedOverlay.remove(); blockedOverlay = null; }
+    }
+    activeUnsubs.push(closeBlocked);
+    blockedBtn.addEventListener('click', function () {
+      closeBlocked();
+      var ids = Object.keys(blockedUsers);
+      blockedOverlay = document.createElement('div');
+      blockedOverlay.className = 'qr-overlay';
+      blockedOverlay.innerHTML =
+        '<div class="qr-card" role="dialog" aria-label="Blocked students">' +
+          '<h3 style="margin-bottom:6px;">Blocked this session</h3>' +
+          '<div class="qr-hint">Blocks end with this session.</div>' +
+          (ids.length ? ids.map(function (id) {
+            return '<div class="q-item" style="text-align:left;"><div class="q-content"><div class="q-text">' + esc(String(blockedUsers[id])) + '</div></div>' +
+              '<div class="q-actions"><button class="unblock-btn" data-uid="' + esc(id) + '">Unblock</button></div></div>';
+          }).join('') : '<div class="discuss-empty">No one is blocked.</div>') +
+          '<button class="btn btn-ghost" id="blockedClose" style="margin-top:8px;">Close</button>' +
+        '</div>';
+      document.body.appendChild(blockedOverlay);
+      blockedOverlay.addEventListener('click', function (e) { if (e.target === blockedOverlay) closeBlocked(); });
+      blockedOverlay.querySelector('#blockedClose').addEventListener('click', closeBlocked);
+      blockedOverlay.querySelectorAll('.unblock-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var nb = Object.assign({}, blockedUsers);
+          delete nb[b.getAttribute('data-uid')];
+          b.disabled = true;
+          sessionDoc(code).update({ blocked: nb }).then(function () {
+            closeBlocked();
+          }).catch(function () { b.disabled = false; showToast('Could not unblock.'); });
+        });
+      });
+    });
+
     function renderQueueRows(docs) {
       lastQueueDocs = docs;
       if (!docs.length) {
@@ -935,9 +1016,11 @@ import { firebaseConfig } from "./firebase-config.js";
           '</div>' +
           (isNext ? '<span class="next-badge">Next</span>' : '') +
           '<button class="help-btn" data-id="' + esc(doc.id) + '">Mark helped</button>' +
+          (doc.id.length > 20 ? '<button class="block-btn" data-uid="' + esc(doc.id) + '" data-label="' + esc(identityLabel(d.name, d.seat)) + '" title="Remove and block this student for the rest of this session">Block</button>' : '') +
         '</div>';
       });
       listEl.innerHTML = html;
+      bindBlockButtons(listEl);
       listEl.querySelectorAll('.help-btn').forEach(function (b) {
         b.addEventListener('click', function () {
           b.disabled = true;
@@ -1034,10 +1117,12 @@ import { firebaseConfig } from "./firebase-config.js";
                 '<button class="q-mute' + (isMuted ? ' is-muted' : '') + '" data-id="' + esc(q.id) + '" data-uid="' + esc(q.authorId) + '" title="' + (isMuted ? 'Unmute this student' : 'Mute this student from posting questions') + '">' +
                   (isMuted ? icons.userUnmute + ' Unmute' : icons.userMute + ' Mute') +
                 '</button>' +
+                (q.authorId ? '<button class="block-btn" data-uid="' + esc(q.authorId) + '" data-label="' + esc(identityLabel(q.authorName, q.authorSeat)) + '" title="Remove and block this student for the rest of this session">Block</button>' : '') +
               '</div>' +
             '</div>';
         });
         activeQListEl.innerHTML = html;
+        bindBlockButtons(activeQListEl);
 
         activeQListEl.querySelectorAll('.q-answered').forEach(function (b) {
           b.addEventListener('click', function () {
@@ -1294,8 +1379,27 @@ import { firebaseConfig } from "./firebase-config.js";
 
     var studentDiscussionMode = false;
     var studentMuted = false;
+    var studentBlocked = false;
+    var lastQuestionAt = 0;
+
+    function renderBlocked() {
+      teardownKeys();
+      inner.innerHTML =
+        '<div class="ticket">' +
+          '<div class="called-flash">' +
+            '<h2>Removed from this session</h2>' +
+            '<p>Your teacher has removed you from this session. Talk to them if you think this is a mistake.</p>' +
+          '</div>' +
+          '<button class="btn btn-ghost lower-btn" id="blockedLeave">Leave class</button>' +
+        '</div>';
+      document.getElementById('blockedLeave').addEventListener('click', leaveClass);
+    }
 
     function updateQuestionSection() {
+      if (studentBlocked) {
+        questionSectionEl.style.display = 'none';
+        return;
+      }
       if (!studentDiscussionMode) {
         questionSectionEl.style.display = 'none';
         return;
@@ -1325,6 +1429,8 @@ import { firebaseConfig } from "./firebase-config.js";
       qSubmitBtn.addEventListener('click', function () {
         var text = qInput.value.trim();
         if (!text) { qInput.focus(); return; }
+        if (Date.now() - lastQuestionAt < 8000) { showToast('Give it a few seconds before sending another question.'); return; }
+        lastQuestionAt = Date.now();
         qSubmitBtn.disabled = true;
         var uid = auth.currentUser && auth.currentUser.uid;
         var entry = { text: text, authorId: uid || '', status: 'active', createdAt: Date.now(), expireAt: expireTs() };
@@ -1392,6 +1498,7 @@ import { firebaseConfig } from "./firebase-config.js";
     }
 
     function renderPad(waitingCount) {
+      if (studentBlocked) { renderBlocked(); return; }
       teardownKeys();
       inner.innerHTML =
         '<div class="raise-pad">' +
@@ -1433,6 +1540,10 @@ import { firebaseConfig } from "./firebase-config.js";
           renderTicketed();
           return;
         }
+        var myUid = auth.currentUser && auth.currentUser.uid;
+        if (!myUid) { showToast('Not signed in yet. Try again in a moment.'); return; }
+        if (Date.now() - lastRaiseAt < 3000) { showToast('One moment before raising again.'); return; }
+        lastRaiseAt = Date.now();
         raising = true;
         var btn = document.getElementById('raiseBtn');
         if (btn) btn.disabled = true;
@@ -1440,10 +1551,18 @@ import { firebaseConfig } from "./firebase-config.js";
         if (name && name.trim()) entry.name = name.trim();
         if (seat && seat.trim()) entry.seat = seat.trim();
         if (noteShare && noteText && noteText.trim()) entry.note = noteText.trim();
-        queueCol(code).add(entry).then(function (ref) {
-          myTicketId = ref.id;
+        // The ticket id is this device's user id, and the rules only allow
+        // creating it once, so one device can hold at most one hand per
+        // session. If it already exists (e.g. after a reload that lost local
+        // state), adopt it instead of failing.
+        queueCol(code).doc(myUid).set(entry).catch(function (err) {
+          return queueCol(code).doc(myUid).get().then(function (s) {
+            if (!s.exists) throw err;
+          });
+        }).then(function () {
+          myTicketId = myUid;
           var saved = loadLS(LS_STUDENT) || {};
-          saved.ticketId = ref.id; saved.code = code; saved.name = name; saved.seat = seat; saved.className = className;
+          saved.ticketId = myUid; saved.code = code; saved.name = name; saved.seat = seat; saved.className = className;
           saveLS(LS_STUDENT, saved);
           renderTicketed();
         }).catch(function () {
@@ -1468,6 +1587,7 @@ import { firebaseConfig } from "./firebase-config.js";
       document.addEventListener('keydown', keyHandler);
     }
 
+    var lastRaiseAt = 0;
     var studentClearedAt = null;
     var sessLoaded = false;
     var ticketBaseline;
@@ -1566,7 +1686,7 @@ import { firebaseConfig } from "./firebase-config.js";
           // session doc's clearedAt a moment to arrive so a bulk clear
           // isn't mistaken for "you've been called".
           setTimeout(function () {
-            if (myTicketId !== watchedId) return;
+            if (myTicketId !== watchedId || studentBlocked) return;
             if (ticketBaseline !== undefined && studentClearedAt !== ticketBaseline) renderCleared();
             else renderCalled();
           }, 700);
@@ -1620,6 +1740,20 @@ import { firebaseConfig } from "./firebase-config.js";
       var uid = auth.currentUser && auth.currentUser.uid;
       studentDiscussionMode = !!data.discussionMode;
       studentMuted = !!(data.mutedUsers && uid && data.mutedUsers[uid]);
+      var nowBlocked = !!(data.blocked && uid && data.blocked[uid]);
+      var blockChanged = nowBlocked !== studentBlocked;
+      studentBlocked = nowBlocked;
+      if (blockChanged) {
+        if (nowBlocked) {
+          myTicketId = null;
+          var savedB = loadLS(LS_STUDENT) || {};
+          savedB.ticketId = null;
+          saveLS(LS_STUDENT, savedB);
+          renderBlocked();
+        } else if (sessLoaded) {
+          renderPad(0);
+        }
+      }
       updateQuestionSection();
     });
     activeUnsubs.push(sessUnsub);
