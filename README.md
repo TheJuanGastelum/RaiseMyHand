@@ -138,14 +138,3 @@ past that, Firebase just stops writes rather than silently billing you
 - Want a custom domain instead of `*.web.app`? Firebase Hosting supports
   this for free — **Hosting → Add custom domain** in the console, then
   follow its DNS instructions.
-
-## Also in this repo
-
-`public/ee-game/` is a separate, self-contained project hosted alongside
-this site: **Circuit Quest**, a retro-pixel-art browser game that teaches
-electrical engineering fundamentals (Ohm's Law, series/parallel circuits,
-Kirchhoff's laws, capacitors) through interactive circuit puzzles, with a
-data-driven level schema and an admin panel for adding/editing/reordering
-levels without touching code. See `public/ee-game/README.md`. It deploys
-automatically with the rest of `public/` and is reachable at `/ee-game/`
-once this site is live.

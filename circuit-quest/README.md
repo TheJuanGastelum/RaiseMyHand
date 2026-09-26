@@ -5,14 +5,24 @@ fundamentals through interactive circuit puzzles, structured like a
 progressive university EE curriculum: Ohm's Law → series circuits →
 parallel circuits → Kirchhoff's Current Law → capacitors/RC transients.
 
-No build step, no dependencies beyond a static file server (it lives under
-`public/ee-game/`, so it deploys automatically alongside the rest of this
-site via Firebase Hosting — it's reachable at `/ee-game/`).
+No build step, no dependencies beyond a static file server. This is a
+standalone project — it does not share hosting, deployment, or any code
+with anything else in this repository.
 
 ## Play it
 
-Open `index.html` (or `https://<your-site>/ee-game/`). Progress and scores
-are saved in `localStorage` per-browser.
+Any static file server works, e.g.:
+
+```bash
+cd circuit-quest && python3 -m http.server 8080
+```
+
+then open `http://localhost:8080`. Progress and scores are saved in
+`localStorage` per-browser.
+
+To deploy it publicly, host the contents of this folder on any static
+host of your choice (GitHub Pages, Netlify, Vercel, Firebase Hosting on
+its own project, etc.) — it's plain HTML/CSS/JS with no build step.
 
 ## Admin panel
 
