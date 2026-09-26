@@ -96,8 +96,9 @@ service cloud.firestore {
     function isValidEntry(data) {
       // A queue entry needs a name, a seat number, or both -- and may
       // optionally carry a short private note the student chose to share.
-      return data.keys().hasOnly(['name', 'seat', 'note', 'joinedAt', 'status'])
+      return data.keys().hasOnly(['name', 'seat', 'note', 'joinedAt', 'status', 'expireAt'])
         && data.keys().hasAny(['name', 'seat'])
+        && (!('expireAt' in data) || data.expireAt is timestamp)
         && (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() <= 40))
         && (!('seat' in data) || (data.seat is string && data.seat.size() > 0 && data.seat.size() <= 12))
         && (!('note' in data) || (data.note is string && data.note.size() > 0 && data.note.size() <= 200))
@@ -116,7 +117,8 @@ service cloud.firestore {
     }
 
     function isValidQuestion(data) {
-      return data.keys().hasOnly(['text', 'authorId', 'authorName', 'authorSeat', 'status', 'createdAt'])
+      return data.keys().hasOnly(['text', 'authorId', 'authorName', 'authorSeat', 'status', 'createdAt', 'expireAt'])
+        && (!('expireAt' in data) || data.expireAt is timestamp)
         && data.text is string && data.text.size() > 0 && data.text.size() <= 300
         && data.authorId is string
         && (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 40))

@@ -4,7 +4,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
-  collection, query, orderBy, onSnapshot, addDoc
+  collection, query, orderBy, onSnapshot, addDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -91,6 +91,11 @@ import { firebaseConfig } from "./firebase-config.js";
   //   while keeping the code + teacher key unchanged.
   // - After a long stretch nobody's touched it, a *new* session request
   //   that happens to land on that code reclaims it outright.
+  // Queue entries and questions carry an expireAt that a Firestore TTL
+  // policy uses to delete them automatically, so student names never
+  // linger if a teacher forgets to clear or end a session.
+  var DATA_TTL_MS = 24 * 60 * 60 * 1000;
+  function expireTs() { return Timestamp.fromMillis(Date.now() + DATA_TTL_MS); }
   var SOFT_RESET_IDLE_MS = 4 * 60 * 60 * 1000; // 4 hours
   var HARD_EXPIRE_IDLE_MS = 75 * 24 * 60 * 60 * 1000; // ~75 days
 
@@ -573,16 +578,16 @@ import { firebaseConfig } from "./firebase-config.js";
   // gets a clean board each time instead of last class's leftovers.
   function softResetSession(code) {
     var now = Date.now();
-    return Promise.all([
-      queueCol(code).get().then(function (snap) {
-        return Promise.all(snap.docs.map(function (d) { return queueCol(code).doc(d.id).delete(); }));
-      }),
-      questionsCol(code).get().then(function (snap) {
-        return Promise.all(snap.docs.map(function (d) { return questionsCol(code).doc(d.id).delete(); }));
-      }),
-      sessionDoc(code).update({ announcement: null, lastActiveAt: now }),
-      sessionDoc(code).update({ discussionMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
-    ]);
+    // clearedAt first so students with a tab still open see "Queue cleared"
+    // rather than a false "You've been called!".
+    return sessionDoc(code).update({ clearedAt: now }).then(function () {
+      return Promise.all([
+        deleteAllDocs(queueCol, code),
+        deleteAllDocs(questionsCol, code),
+        sessionDoc(code).update({ announcement: null, lastActiveAt: now }),
+        sessionDoc(code).update({ discussionMode: false, questionsVisible: true, mutedUsers: {}, lastActiveAt: now })
+      ]);
+    });
   }
 
   function deleteAllDocs(col, code) {
@@ -1304,7 +1309,7 @@ import { firebaseConfig } from "./firebase-config.js";
         if (!text) { qInput.focus(); return; }
         qSubmitBtn.disabled = true;
         var uid = auth.currentUser && auth.currentUser.uid;
-        var entry = { text: text, authorId: uid || '', status: 'active', createdAt: Date.now() };
+        var entry = { text: text, authorId: uid || '', status: 'active', createdAt: Date.now(), expireAt: expireTs() };
         if (name && name.trim()) entry.authorName = name.trim();
         if (seat && seat.trim()) entry.authorSeat = seat.trim();
         questionsCol(code).add(entry).then(function () {
@@ -1413,7 +1418,7 @@ import { firebaseConfig } from "./firebase-config.js";
         raising = true;
         var btn = document.getElementById('raiseBtn');
         if (btn) btn.disabled = true;
-        var entry = { joinedAt: Date.now(), status: 'waiting' };
+        var entry = { joinedAt: Date.now(), status: 'waiting', expireAt: expireTs() };
         if (name && name.trim()) entry.name = name.trim();
         if (seat && seat.trim()) entry.seat = seat.trim();
         if (noteShare && noteText && noteText.trim()) entry.note = noteText.trim();
