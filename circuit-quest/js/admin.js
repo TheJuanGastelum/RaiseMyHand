@@ -93,7 +93,7 @@ function renderList() {
     row.querySelector('[data-act="down"]').onclick = () => { LevelStore.move(lvl.id, 1); renderList(); };
     row.querySelector('[data-act="edit"]').onclick = () => openEditor(lvl);
     row.querySelector('[data-act="delete"]').onclick = () => {
-      if (confirm(`Delete "${lvl.title}"?`)) { LevelStore.remove(lvl.id); renderList(); }
+      pixelConfirm(`Delete "${lvl.title}"?`, () => { LevelStore.remove(lvl.id); renderList(); });
     };
     list.appendChild(row);
   });
@@ -197,11 +197,7 @@ document.getElementById("save-btn").addEventListener("click", () => {
 });
 
 document.getElementById("export-btn").addEventListener("click", () => {
-  const blob = new Blob([LevelStore.exportJSON()], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "circuit-quest-levels.json";
-  a.click();
+  pixelTextDialog("Export Levels JSON", LevelStore.exportJSON());
 });
 
 document.getElementById("import-btn").addEventListener("click", () => {
@@ -215,19 +211,19 @@ document.getElementById("import-file").addEventListener("change", (e) => {
     try {
       LevelStore.importJSON(reader.result);
       renderList();
-      alert("Levels imported.");
+      pixelNotice("Levels imported.");
     } catch (err) {
-      alert("Import failed: " + err.message);
+      pixelNotice("Import failed: " + err.message);
     }
   };
   reader.readAsText(file);
 });
 
 document.getElementById("reset-btn").addEventListener("click", () => {
-  if (confirm("Reset all levels to the bundled defaults? This discards any custom levels.")) {
+  pixelConfirm("Reset all levels to the bundled defaults? This discards any custom levels.", () => {
     LevelStore.resetToDefaults();
     renderList();
-  }
+  });
 });
 
 checkGate();

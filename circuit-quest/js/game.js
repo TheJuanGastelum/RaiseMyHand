@@ -130,10 +130,10 @@
   document.getElementById("hint-btn").addEventListener("click", showHint);
   document.getElementById("back-btn").addEventListener("click", goBack);
   document.getElementById("reset-btn").addEventListener("click", () => {
-    if (confirm("Reset all progress?")) {
+    pixelConfirm("Reset all progress?", () => {
       Progress.reset();
       renderMap();
-    }
+    });
   });
 
   renderMap();
