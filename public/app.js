@@ -470,6 +470,12 @@ import { firebaseConfig } from "./firebase-config.js";
       e.textContent = msg; e.classList.add('show');
     }
 
+    var resumeParam = readResumeParam();
+    if (resumeParam) {
+      root.querySelector('#resumeBox').style.display = 'block';
+      root.querySelector('#resumeCode').value = resumeParam;
+    }
+
     root.querySelector('#startBtn').addEventListener('click', function () {
       var btn = this; btn.disabled = true; btn.textContent = 'Starting…';
       var className = root.querySelector('#className').value.trim();
@@ -656,6 +662,7 @@ import { firebaseConfig } from "./firebase-config.js";
           '<div class="sub" id="waitCount">Waiting for students&hellip;</div>' +
           '<div class="mode-wrap"><button class="mode-pill" id="discussBtn" aria-haspopup="menu" aria-expanded="false">Mode: Standard &#9662;</button></div>' +
           (teacherKey ? '<button class="reopen-toggle" id="reopenToggle">Show my reopen code</button>' : '') +
+          (teacherKey ? '<button class="reopen-toggle" id="coHostBtn" title="Copies a link that opens the resume form for a co-host or TA">Copy co-host link</button>' : '') +
         '</div>' +
         '<div class="code-chip">' +
           '<div><div class="code-label">Class code</div><div class="code-value">' + esc(code) + '</div></div>' +
@@ -719,6 +726,17 @@ import { firebaseConfig } from "./firebase-config.js";
         reopenToggle.innerHTML = reopenShown
           ? 'Hide reopen code &middot; <span class="reopen-value">' + esc(code + teacherKey) + '</span>'
           : 'Show my reopen code';
+      });
+    }
+
+    if (teacherKey) {
+      root.querySelector('#coHostBtn').addEventListener('click', function () {
+        var link = location.origin + location.pathname + '?resume=' + encodeURIComponent(code + teacherKey);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(function () { showToast('Co-host link copied. Anyone with it can run this board.'); }).catch(function () { showToast(link); });
+        } else {
+          showToast(link);
+        }
       });
     }
 
@@ -1204,7 +1222,7 @@ import { firebaseConfig } from "./firebase-config.js";
         sessLog.times.forEach(function (t) { var b = Math.floor(t / 600000); buckets[b] = (buckets[b] || 0) + 1; });
         var best = Object.keys(buckets).sort(function (a, b) { return buckets[b] - buckets[a]; })[0];
         var st = new Date(best * 600000);
-        busiest = st.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' (' + buckets[best] + ' hands in 10 min)';
+        busiest = st.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' (' + buckets[best] + (buckets[best] === 1 ? ' hand' : ' hands') + ' in 10 min)';
       }
       return { raised: sessLog.raised, helped: h.length, avg: avg, max: max, busiest: busiest };
     }
@@ -1546,6 +1564,15 @@ import { firebaseConfig } from "./firebase-config.js";
 
   function endSession(code) {
     return wipeSession(code);
+  }
+
+  // A co-host link carries ?resume=CODE+KEY (6 characters). Returns it or ''.
+  function readResumeParam() {
+    var raw = '';
+    try { raw = (new URLSearchParams(location.search).get('resume') || '').trim().toUpperCase(); } catch (e) { return ''; }
+    if (raw.length !== 6) return '';
+    for (var i = 0; i < 6; i++) if (CODE_CHARS.indexOf(raw[i]) === -1) return '';
+    return raw;
   }
 
   // A scanned QR / shared link carries ?code=ABCD. Returns a valid code or ''.
@@ -2097,7 +2124,8 @@ import { firebaseConfig } from "./firebase-config.js";
   function boot() {
     mount('<div class="card"><h2>Connecting&hellip;</h2><div class="sub">Setting up your session.</div></div>');
     waitForAuth().then(function () {
-      if (readLinkCode()) renderStudentJoin();
+      if (readResumeParam()) renderTeacherStart();
+      else if (readLinkCode()) renderStudentJoin();
       else renderLanding();
     }).catch(function () {
       mount('<div class="card"><h2>Can&rsquo;t connect</h2><div class="sub">Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.</div></div>');
