@@ -1,0 +1,13 @@
+{
+  "name": "RaiseMyHand",
+  "short_name": "RaiseMyHand",
+  "description": "A live digital hand-raise queue for the classroom.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0E1D2E",
+  "theme_color": "#1F4E8C",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" }
+  ]
+}

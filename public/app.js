@@ -226,6 +226,8 @@ import { firebaseConfig } from "./firebase-config.js";
     qr: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v0M14 20h3M20 17v4"/></svg>'
   };
 
+  var KIND_LABELS = { question: 'Quick question', stuck: 'Stuck', check: 'Check my work' };
+
   function identityLabel(name, seat) {
     var n = (name || '').trim();
     var s = (seat || '').trim();
@@ -1054,7 +1056,8 @@ import { firebaseConfig } from "./firebase-config.js";
         html += '<div class="stub' + (isNext ? ' next' : '') + (flashIds[doc.id] ? ' flash-new' : '') + '" data-joined="' + (d.joinedAt || Date.now()) + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
           '<div class="who"><div class="name" title="' + esc(identityLabel(d.name, d.seat)) + '">' + esc(identityLabel(d.name, d.seat)) + '</div>' +
-            '<div class="wait mono">waiting <span class="wait-time">0:00</span></div>' +
+            '<div class="wait mono">waiting <span class="wait-time">0:00</span>' +
+              (KIND_LABELS[d.kind] ? ' <span class="kind-tag k-' + esc(d.kind) + '">' + esc(KIND_LABELS[d.kind]) + '</span>' : '') + '</div>' +
             noteHtml +
           '</div>' +
           (isNext ? '<span class="next-badge">Next</span>' : '') +
@@ -1592,6 +1595,7 @@ import { firebaseConfig } from "./firebase-config.js";
     var noteDraft = loadLS('rmh_note_' + code) || {};
     var noteText = noteDraft.text || '';
     var noteShare = !!noteDraft.share;
+    var handKind = '';
 
     function teardownKeys() {
       if (keyHandler) { document.removeEventListener('keydown', keyHandler); keyHandler = null; }
@@ -1645,6 +1649,11 @@ import { firebaseConfig } from "./firebase-config.js";
             (waitingCount ? ' &middot; ' + waitingCount + ' waiting' : '') + '</div>' +
           '<button class="raise-btn" id="raiseBtn">' + icons.hand + '<span class="label">Raise hand</span></button>' +
           '<div class="kbd-hint">or press <kbd>Space</kbd></div>' +
+          '<div class="kind-row" id="kindRow" role="group" aria-label="What kind of help (optional)">' +
+            Object.keys(KIND_LABELS).map(function (k) {
+              return '<button type="button" class="kind-chip' + (handKind === k ? ' on' : '') + '" data-kind="' + k + '" aria-pressed="' + (handKind === k) + '">' + esc(KIND_LABELS[k]) + '</button>';
+            }).join('') +
+          '</div>' +
           '<button class="note-toggle" id="noteToggle">' + (noteText ? 'Edit your note' : '+ Add a note to yourself') + '</button>' +
           '<div class="note-box" id="noteBox" style="display:' + (noteText ? 'block' : 'none') + ';">' +
             '<textarea id="noteInput" maxlength="200" placeholder="What did you want to ask or remember?">' + esc(noteText) + '</textarea>' +
@@ -1652,6 +1661,18 @@ import { firebaseConfig } from "./firebase-config.js";
           '</div>' +
           '<div class="link-row" style="margin-top:28px;"><button id="leaveBtn">Not your class? Switch</button></div>' +
         '</div>';
+
+      document.querySelectorAll('#kindRow .kind-chip').forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var k = chip.getAttribute('data-kind');
+          handKind = handKind === k ? '' : k;
+          document.querySelectorAll('#kindRow .kind-chip').forEach(function (c) {
+            var on = c.getAttribute('data-kind') === handKind;
+            c.classList.toggle('on', on);
+            c.setAttribute('aria-pressed', on);
+          });
+        });
+      });
 
       var noteToggleBtn = document.getElementById('noteToggle');
       var noteBox = document.getElementById('noteBox');
@@ -1690,6 +1711,7 @@ import { firebaseConfig } from "./firebase-config.js";
         if (name && name.trim()) entry.name = name.trim();
         if (seat && seat.trim()) entry.seat = seat.trim();
         if (noteShare && noteText && noteText.trim()) entry.note = noteText.trim();
+        if (handKind) { entry.kind = handKind; handKind = ''; }
         // The ticket id is this device's user id, and the rules only allow
         // creating it once, so one device can hold at most one hand per
         // session. If it already exists (e.g. after a reload that lost local
@@ -1955,6 +1977,12 @@ import { firebaseConfig } from "./firebase-config.js";
       mount('<div class="card"><h2>Can&rsquo;t connect</h2><div class="sub">Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.</div></div>');
     });
   }
+
+  var offlineBarEl = document.getElementById('offlineBar');
+  function syncOnline() { if (offlineBarEl) offlineBarEl.hidden = navigator.onLine !== false; }
+  window.addEventListener('online', syncOnline);
+  window.addEventListener('offline', syncOnline);
+  syncOnline();
 
   boot();
 })();

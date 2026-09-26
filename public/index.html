@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RaiseMyHand</title>
 <meta name="description" content="A live digital hand-raise queue for the classroom — students press space or tap to line up, teachers watch the queue update in real time.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>✋</text></svg>">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F4E8C">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -291,6 +294,14 @@
   .discuss-actions .btn{ width:auto; padding:5px 10px; font-size:.78rem; }
   @keyframes new-hand-flash{ 0%{ box-shadow:0 0 0 0 var(--accent); background:var(--accent-soft); } 100%{ box-shadow:0 0 0 12px transparent; } }
   .stub.flash-new{ animation:new-hand-flash 1.4s ease-out 2; }
+  .offline-bar{ position:fixed; top:0; left:0; right:0; z-index:1200; background:var(--danger); color:#fff; text-align:center; font-size:.84rem; font-weight:700; padding:8px 14px; }
+  .offline-bar[hidden]{ display:none; }
+  .kind-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }
+  .kind-chip{ background:transparent; color:var(--ink-soft); border:1.5px solid var(--line); border-radius:999px; padding:5px 12px; font-size:.78rem; font-weight:700; cursor:pointer; font-family:inherit; }
+  .kind-chip:hover{ border-color:var(--accent); }
+  .kind-chip.on{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .kind-tag{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:.68rem; font-weight:800; letter-spacing:.02em; background:var(--accent-soft); color:var(--accent); font-family:inherit; }
+  .kind-tag.k-stuck{ background:var(--raise); color:var(--raise-ink); }
   .undo-bar{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:1100; display:flex; align-items:center; gap:14px; background:var(--ink); color:var(--bg); padding:10px 12px 10px 18px; border-radius:999px; font-size:.86rem; font-weight:600; box-shadow:var(--shadow); max-width:calc(100vw - 32px); }
   .undo-bar button{ background:var(--accent); color:var(--accent-ink); border:none; border-radius:999px; padding:6px 14px; font-weight:800; font-size:.8rem; cursor:pointer; font-family:inherit; }
   .site-foot{ text-align:center; padding:18px 16px 26px; font-size:.78rem; color:var(--ink-faint); }
@@ -503,6 +514,7 @@
   <footer class="site-foot"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></footer>
 </div>
 <div class="toast" id="toast"></div>
+<div class="offline-bar" id="offlineBar" role="status" aria-live="polite" hidden>You&rsquo;re offline &mdash; reconnecting&hellip; Changes will sync when you&rsquo;re back.</div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script type="module" src="./app.js"></script>
