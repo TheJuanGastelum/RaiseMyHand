@@ -35,19 +35,52 @@
     canvas.style.margin = "0 auto";
     canvas.style.cursor = "pointer";
     host.appendChild(canvas);
+    const hint = document.createElement("p");
+    hint.className = "dim";
+    hint.style.fontSize = "9px";
+    hint.style.textAlign = "center";
+    hint.textContent = "Use arrow keys / WASD, or click the flag, to walk Pete over.";
+    host.insertBefore(hint, canvas);
+
     const pc = new PixelCanvas(canvas, 260, 140);
-    let clicked = false;
-    let clickTime = 0;
+    let peteX = 60;
+    let moving = false;
+    const held = { left: false, right: false };
+
     canvas.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * pc.w;
-      if (x > 190 && !clicked) {
-        clicked = true;
-        clickTime = performance.now();
-      }
+      if (x > peteX) held.right = true;
     });
+    const onKeydown = (e) => {
+      const k = e.key.toLowerCase();
+      if (k === "arrowright" || k === "d") {
+        held.right = true;
+        e.preventDefault();
+      } else if (k === "arrowleft" || k === "a") {
+        held.left = true;
+        e.preventDefault();
+      }
+    };
+    const onKeyup = (e) => {
+      const k = e.key.toLowerCase();
+      if (k === "arrowright" || k === "d") held.right = false;
+      else if (k === "arrowleft" || k === "a") held.left = false;
+    };
+    document.addEventListener("keydown", onKeydown);
+    document.addEventListener("keyup", onKeyup);
+
     let raf;
     const loop = (now) => {
+      if (held.right) {
+        peteX = Math.min(210, peteX + 2.2);
+        moving = true;
+      } else if (held.left) {
+        peteX = Math.max(60, peteX - 2.2);
+        moving = true;
+      } else {
+        moving = false;
+      }
       const ctx = pc.ctx;
       ctx.fillStyle = "#121018";
       ctx.fillRect(0, 0, pc.w, pc.h);
@@ -56,7 +89,6 @@
       ctx.moveTo(10, 110);
       ctx.lineTo(250, 110);
       ctx.stroke();
-      const peteX = clicked ? Math.min(210, 60 + (now - clickTime) / 3) : 60;
       ctx.strokeStyle = "#ffb454";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -68,16 +100,23 @@
       ctx.fillStyle = "#f4f1f9";
       ctx.font = "7px monospace";
       ctx.fillText("GO", 212, 64);
-      Pete.draw(ctx, peteX, 92, { walking: clicked, t: now });
+      Pete.draw(ctx, peteX, 92, { walking: moving, t: now });
       raf = requestAnimationFrame(loop);
-      if (clicked && peteX >= 209 && !introDone) {
+      if (peteX >= 209 && !introDone) {
         introDone = true;
         cancelAnimationFrame(raf);
         setTimeout(() => finishLevel(true), 300);
       }
     };
     loop(0);
-    return { destroy: () => cancelAnimationFrame(raf), check: () => ({ correct: true }) };
+    return {
+      destroy: () => {
+        cancelAnimationFrame(raf);
+        document.removeEventListener("keydown", onKeydown);
+        document.removeEventListener("keyup", onKeyup);
+      },
+      check: () => ({ correct: true }),
+    };
   }
 
   function openLevel(lvl) {
@@ -102,6 +141,14 @@
 
     if (activeEngine && activeEngine.destroy) activeEngine.destroy();
 
+    // Every puzzle type except the gauntlet (which renders its own
+    // per-part prompt) shows its config.prompt, if set, right above the
+    // puzzle itself — this is the always-visible "what do I do" line,
+    // separate from the toggleable "?" concept text.
+    if (lvl.puzzleType !== "gauntlet" && lvl.config.prompt) {
+      puzzleHost.appendChild(makePromptEl(lvl.config.prompt));
+    }
+
     switch (lvl.puzzleType) {
       case "intro":
         activeEngine = buildIntro(puzzleHost);
@@ -113,18 +160,15 @@
         activeEngine = new MemoryWalk(puzzleHost, lvl.config);
         break;
       case "stack-sim":
-        if (lvl.config.prompt) puzzleHost.appendChild(makePromptEl(lvl.config.prompt));
         activeEngine = new StackSim(puzzleHost, lvl.config);
         break;
       case "wire-connect":
-        if (lvl.config.prompt) puzzleHost.appendChild(makePromptEl(lvl.config.prompt));
         activeEngine = new WireConnect(puzzleHost, lvl.config);
         break;
       case "formula":
         activeEngine = new FormulaPuzzle(puzzleHost, lvl.config);
         break;
       case "numeric":
-        if (lvl.config.prompt) puzzleHost.appendChild(makePromptEl(lvl.config.prompt));
         activeEngine = new NumericPuzzle(puzzleHost, lvl.config);
         break;
       case "gauntlet":

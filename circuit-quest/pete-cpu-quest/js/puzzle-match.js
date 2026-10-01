@@ -17,7 +17,6 @@ class DragMatch {
     this.config = config;
     this.opts = opts || {};
     this.placements = {}; // chipId -> targetId
-    this.root.innerHTML = "";
     this._dragging = null;
     this._build();
   }

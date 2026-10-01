@@ -34,10 +34,11 @@ window.PETE_LEVELS = [
     world: "memory",
     title: "The Register File",
     concept:
-      "MIPS has 32 numbered registers, and by convention each range is used for a specific job: $zero is always 0, $a0-$a3 hold a function's arguments, $t0-$t7 are scratch space anyone can clobber, $s0-$s7 must be preserved across a call, $sp tracks the stack, $ra holds a return address. Knowing these cold is the foundation for everything else in the course.",
+      "MIPS has 32 numbered registers, and by convention each range is used for a specific job: $zero is always 0, $v0-$v1 hold return values, $a0-$a3 hold a function's arguments, $t0-$t7 are scratch space anyone can clobber, $s0-$s7 must be preserved across a call, $sp tracks the stack, $ra holds a return address. Knowing these cold is the foundation for everything else in the course.",
     puzzleType: "match",
     config: {
       mode: "slots",
+      prompt: "Drag each register name onto the number it corresponds to.",
       slots: [
         { id: "0", label: "register 0" },
         { id: "2", label: "register 2" },
@@ -89,6 +90,7 @@ window.PETE_LEVELS = [
     puzzleType: "match",
     config: {
       mode: "code",
+      prompt: "Drag the correct value from the bank into each blank below.",
       codeLines: [
         "sll $t1, $a2, {{b1|shift amount}}    # t1 = k*4",
         "add $t2, $t1, $a1        # t2 = &B[k]",
@@ -119,6 +121,7 @@ window.PETE_LEVELS = [
     puzzleType: "match",
     config: {
       mode: "bins",
+      prompt: "Drag each instruction into the bin for its format: R, I, or J.",
       bins: [
         { id: "R", label: "R-type" },
         { id: "I", label: "I-type" },
@@ -203,6 +206,7 @@ window.PETE_LEVELS = [
     puzzleType: "match",
     config: {
       mode: "slots",
+      prompt: "Read each code snippet below, then drag the description that matches what it actually does.",
       slots: [
         { id: "snipA", label: "xor $t0,$t0,$t1\nxor $t1,$t0,$t1\nxor $t0,$t0,$t1" },
         {
@@ -235,6 +239,8 @@ window.PETE_LEVELS = [
       "CPU time = Instruction Count × Cycles Per Instruction × Clock Cycle Time. Every performance question in this course — comparing designs, judging a hardware change, computing speedup — is this same formula asked a different way.",
     puzzleType: "formula",
     config: {
+      prompt:
+        "Drag IC, CPI, and Clock Cycle Time into the formula's blanks. Then: a program runs 50,000 instructions at CPI=2, on a 2ns clock. Move the slider to the total CPU time.",
       formulaLines: ["CPUtime = {{a|term}} × {{b|term}} × {{c|term}}"],
       chips: [
         { id: "ic", label: "IC", correct: "a" },
@@ -250,7 +256,6 @@ window.PETE_LEVELS = [
         unit: "ns",
         answer: 200000,
         tolerance: 0.02,
-        prompt: "A program runs 50,000 instructions at CPI=2, on a 2ns clock. Total CPU time?",
       },
     },
     hint: "CPUtime = IC × CPI × cycle time = 50000 × 2 × 2ns.",
@@ -289,6 +294,7 @@ window.PETE_LEVELS = [
     puzzleType: "match",
     config: {
       mode: "code",
+      prompt: "Fill in the blanks to complete this loop (drag from the bank below).",
       codeLines: [
         "add   $t0,$zero,$zero    # k = 0",
         "add   $t1,$zero,$zero    # i = 0",
@@ -321,6 +327,7 @@ window.PETE_LEVELS = [
       "A CPU is a handful of reusable building blocks wired together: the PC points at the current instruction, Instruction Memory hands it back, the Register File supplies operands, the ALU does the math, Data Memory serves lw/sw, and an Adder computes PC+4. Every instruction just flows through this same fixed wiring.",
     puzzleType: "wire-connect",
     config: {
+      prompt: "Connect the components so data can flow correctly through a lw instruction (fetch → read register → compute address → read memory → write back).",
       w: 400,
       h: 200,
       nodes: [
@@ -357,6 +364,7 @@ window.PETE_LEVELS = [
     puzzleType: "match",
     config: {
       mode: "slots",
+      prompt: "Drag each 0/1 (or 00) value onto the control signal it belongs to, for the lw instruction.",
       slots: [
         { id: "RegDst", label: "RegDst" },
         { id: "ALUSrc", label: "ALUSrc" },
@@ -479,7 +487,8 @@ window.PETE_LEVELS = [
         { id: "add", label: "add $14,$2,$2  (reads $2 in cycle 5)", correct: "correct" },
         { id: "sw", label: "sw $15,100($2)  (reads $2 in cycle 6)", correct: "correct" },
       ],
-      prompt: "No forwarding hardware in this scenario. sub $2,$1,$3 writes $2 back in cycle 5.",
+      prompt:
+        "No forwarding hardware in this scenario. sub $2,$1,$3 writes $2 back in cycle 5.\nSort each instruction below into the correct bin.",
     },
     hint: "Cycle 5 or later = correct (same-cycle write-then-read trick, or already written). Earlier = stale.",
   },
@@ -527,7 +536,7 @@ window.PETE_LEVELS = [
           type: "match",
           title: "Part 2b — The \"ece369\" Instruction's Control Signals",
           prompt:
-            "ece369 $sp: R[$sp] = R[$sp]-4 ;  PC = Memory[R[$sp]-4]\n(it pops a return address off the stack and jumps to it — like jr, but reading the address from memory instead of a register, and moving $sp itself)",
+            "ece369 $sp: R[$sp] = R[$sp]-4 ;  PC = Memory[R[$sp]-4]\n(it pops a return address off the stack and jumps to it — like jr, but reading the address from memory instead of a register, and moving $sp itself)\nDrag each value into the control signal it belongs to.",
           config: {
             mode: "slots",
             slots: [

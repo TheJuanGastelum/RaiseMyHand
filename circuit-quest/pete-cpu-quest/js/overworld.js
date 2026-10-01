@@ -93,13 +93,14 @@ const Overworld = {
 
   handleKeydown(e) {
     if (document.getElementById("puzzle-screen").style.display === "block") return;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    const k = e.key.toLowerCase();
+    if (k === "arrowright" || k === "arrowdown" || k === "d" || k === "s") {
       e.preventDefault();
       this.walkTo(Math.min(this.current + 1, this.waypoints.length - 1));
-    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    } else if (k === "arrowleft" || k === "arrowup" || k === "a" || k === "w") {
       e.preventDefault();
       this.walkTo(Math.max(this.current - 1, 0));
-    } else if (e.key === "Enter" || e.key === " ") {
+    } else if (k === "enter" || k === " ") {
       e.preventDefault();
       this.tryEnter();
     }
