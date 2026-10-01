@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pete's CPU Quest — ECE 369A</title>
+  <link rel="stylesheet" href="css/pete.css" />
+  <style>
+    body { padding: 20px; max-width: 900px; margin: 0 auto; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    #puzzle-screen { display: none; }
+    .close-x { float: right; }
+    footer { margin-top: 30px; text-align: center; }
+    .settings-link { color: var(--text-dim); font-size: 13px; text-decoration: none; opacity: 0.6; }
+    .settings-link:hover { opacity: 1; }
+    #puzzle-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    #concept-box { font-family: monospace; font-size: 12px; line-height: 1.7; color: var(--text); white-space: pre-wrap; }
+    #concept-box[hidden] { display: none; }
+    #feedback { min-height: 40px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🤖 Pete's CPU Quest</h1>
+    <div class="row">
+      <span id="score-badge" class="badge">0 ★</span>
+      <button id="reset-btn" title="Reset progress">Reset</button>
+    </div>
+  </header>
+
+  <section id="map-screen">
+    <p class="dim" style="text-align:center;">Walk Pete with the arrow keys, or click a node. Enter/Space (or click twice) to play.</p>
+    <div class="panel">
+      <canvas id="overworld-canvas"></canvas>
+    </div>
+    <p id="overworld-prompt"></p>
+    <p class="legend dim">
+      <span><i style="background:var(--world-memory)"></i>Memory World (L1-6)</span>
+      <span><i style="background:var(--world-debug)"></i>Debug World (L7-9)</span>
+      <span><i style="background:var(--world-datapath)"></i>Datapath World (L10-17)</span>
+      <span><i style="background:#ff6b6b"></i>Midterm Gauntlet</span>
+    </p>
+  </section>
+
+  <section id="puzzle-screen">
+    <button class="close-x" id="back-btn">← Back</button>
+    <div id="puzzle-header">
+      <h2 id="puzzle-title" style="margin:0;"></h2>
+      <span class="badge" id="puzzle-lecture"></span>
+      <button class="qbtn" id="question-btn" title="Explain this">?</button>
+    </div>
+
+    <div class="panel stack" id="concept-box" hidden style="margin-top:14px;"></div>
+
+    <div class="panel" style="margin-top:14px;">
+      <div id="puzzle-host"></div>
+    </div>
+
+    <div class="panel stack" style="margin-top:14px;">
+      <div class="row">
+        <button id="submit-btn" class="primary">Check Answer</button>
+        <button id="hint-btn">Hint (−1★)</button>
+      </div>
+      <p id="feedback"></p>
+    </div>
+  </section>
+
+  <footer class="dim">
+    Pete's CPU Quest — ECE 369A: Fundamentals of Computer Organization.
+    <br /><a href="../index.html" class="settings-link">← Circuit Quest</a>
+  </footer>
+
+  <script src="js/ui.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/pete-render.js"></script>
+  <script src="js/level-store.js"></script>
+  <script src="js/puzzle-match.js"></script>
+  <script src="js/puzzle-numeric.js"></script>
+  <script src="js/puzzle-memory-walk.js"></script>
+  <script src="js/puzzle-stack-sim.js"></script>
+  <script src="js/puzzle-wire-connect.js"></script>
+  <script src="js/puzzle-formula.js"></script>
+  <script src="js/puzzle-gauntlet.js"></script>
+  <script src="js/levels-data.js"></script>
+  <script src="js/overworld.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
