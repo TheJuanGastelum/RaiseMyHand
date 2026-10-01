@@ -176,6 +176,7 @@
         hintBtn.style.display = "none";
         break;
     }
+    window.__activeEngine = activeEngine; // debug/test hook
   }
 
   function makePromptEl(text) {

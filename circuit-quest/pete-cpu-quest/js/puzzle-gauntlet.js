@@ -42,6 +42,7 @@ class GauntletPuzzle {
     const host = document.createElement("div");
     this.root.appendChild(host);
     this.active = this._makeEngine(part, host);
+    window.__activeEngine = this.active; // debug/test hook
 
     this.feedback = document.createElement("p");
     this.root.appendChild(this.feedback);
