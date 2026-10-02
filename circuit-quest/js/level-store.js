@@ -107,12 +107,11 @@ const Progress = {
     this.save(p);
     return p;
   },
-  isUnlocked(levels, levelId) {
-    const p = this.get();
-    const idx = levels.findIndex((l) => l.id === levelId);
-    if (idx <= 0) return true;
-    const prev = levels[idx - 1];
-    return !!p.completed[prev.id];
+  isUnlocked() {
+    // Every level is reachable — nothing is gated. Stars/completion are
+    // still only ever earned by actually solving a level (see complete()
+    // above); this only affects whether you can walk in and try one.
+    return true;
   },
   reset() {
     localStorage.removeItem(PROGRESS_KEY);
