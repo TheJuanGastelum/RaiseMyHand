@@ -9,9 +9,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1F4E8C">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
   /* Explicit, hand-picked color themes -- no automatic OS dark-mode
      switching, so nobody ends up stuck with a low-contrast combo their
@@ -192,6 +190,10 @@
   .screen.wide{ max-width:640px; min-height:100%; display:flex; flex-direction:column; }
   @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
   @media (prefers-reduced-motion: reduce){ .screen{ animation:none; } }
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+  }
 
   /* ---- Landing ---- */
   .lede{ text-align:center; margin-bottom:28px; }
@@ -539,13 +541,13 @@
     <div class="topbar-meta" id="topbarMeta"></div>
   </header>
   <main class="app" id="app"></main>
-  <footer class="site-foot"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a></footer>
+  <footer class="site-foot"><a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a> &middot; <a href="licenses.html">Licenses</a></footer>
 </div>
 <div class="toast" id="toast"></div>
 <div class="offline-bar" id="quotaBar" role="status" aria-live="polite" hidden>RaiseMyHand has hit its free daily limit. It resets overnight (Pacific time), so please try again tomorrow.</div>
 <div class="offline-bar" id="offlineBar" role="status" aria-live="polite" hidden>You&rsquo;re offline &mdash; reconnecting&hellip; Changes will sync when you&rsquo;re back.</div>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="vendor/qrcode.js"></script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

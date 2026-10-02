@@ -352,7 +352,7 @@ import { firebaseConfig } from "./firebase-config.js";
       '<div class="feedback-pop" id="feedbackPop">' +
         '<div class="feedback-pop-head">Suggest something</div>' +
         '<div class="feedback-pop-sub">Bugs, ideas, anything -- goes straight to the person running this app.</div>' +
-        '<textarea id="feedbackText" maxlength="500" placeholder="What would make this better?"></textarea>' +
+        '<textarea id="feedbackText" maxlength="500" aria-label="Your suggestion" placeholder="What would make this better?"></textarea>' +
         '<button class="btn btn-primary" id="feedbackSendBtn">Send</button>' +
         '<div class="feedback-thanks" id="feedbackThanks" style="display:none;">Thanks &mdash; sent.</div>' +
       '</div>';
@@ -445,6 +445,20 @@ import { firebaseConfig } from "./firebase-config.js";
     var wrap = document.createElement('div');
     wrap.className = 'screen' + (wide ? ' wide' : '');
     wrap.innerHTML = html;
+    // Every screen needs one top-level heading for screen-reader users:
+    // promote the screen's own title if it has one, else add a hidden one.
+    if (!wrap.querySelector('h1')) {
+      var title = wrap.querySelector('.card h2, .board-title h2');
+      if (title) {
+        title.setAttribute('role', 'heading');
+        title.setAttribute('aria-level', '1');
+      } else {
+        var h = document.createElement('h1');
+        h.className = 'sr-only';
+        h.textContent = 'RaiseMyHand';
+        wrap.insertBefore(h, wrap.firstChild);
+      }
+    }
     appEl.innerHTML = '';
     appEl.appendChild(wrap);
     return wrap;
@@ -481,8 +495,18 @@ import { firebaseConfig } from "./firebase-config.js";
     var leaderEl = root.querySelector('#leaderCycle');
     var joinerEl = root.querySelector('#joinerCycle');
     var li = 0; var ji = 0;
+    // WCAG 2.2.2: auto-changing text must be pausable. It pauses while the
+    // pointer or keyboard focus is on the cards, never runs for people who
+    // ask for reduced motion, and stops by itself after about 30 seconds.
+    var cyclePaused = false;
+    var cycleStarted = Date.now();
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var roleGrid = root.querySelector('.role-grid');
+    ['mouseenter', 'focusin'].forEach(function (ev) { roleGrid.addEventListener(ev, function () { cyclePaused = true; }); });
+    ['mouseleave', 'focusout'].forEach(function (ev) { roleGrid.addEventListener(ev, function () { cyclePaused = false; }); });
     var cycleTimer = setInterval(function () {
-      if (!leaderEl || !leaderEl.isConnected) { clearInterval(cycleTimer); return; }
+      if (!leaderEl || !leaderEl.isConnected || reduceMotion || Date.now() - cycleStarted > 30000) { clearInterval(cycleTimer); return; }
+      if (cyclePaused) return;
       li = (li + 1) % LEADER_TERMS.length;
       ji = (ji + 1) % JOINER_TERMS.length;
       leaderEl.classList.add('role-cycle-fade');
@@ -784,7 +808,7 @@ import { firebaseConfig } from "./firebase-config.js";
           '<div class="discuss-card polls-card" id="pollsCard" style="display:none;">' +
             '<div class="discuss-head"><h3>Poll</h3><span class="discuss-count" id="pollStatus"></span></div>' +
             '<div id="pollBuilder">' +
-              '<input type="text" id="pollQ" maxlength="200" placeholder="Ask the class a question">' +
+              '<input type="text" id="pollQ" maxlength="200" aria-label="Poll question" placeholder="Ask the class a question">' +
               '<div class="poll-opts" id="pollOpts"></div>' +
               '<div class="poll-actions">' +
                 '<button class="btn btn-ghost" id="pollAddOpt">+ Option</button>' +
@@ -802,20 +826,20 @@ import { firebaseConfig } from "./firebase-config.js";
             '<div class="announce-card-head"><h3>Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
             '<div id="announceCurrent" style="display:none;"></div>' +
             '<div class="announce-form">' +
-              '<textarea id="annText" maxlength="200" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
+              '<textarea id="annText" maxlength="200" aria-label="Announcement text" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
               '<div class="announce-controls">' +
-                '<select id="annMode">' +
+                '<select id="annMode" aria-label="How long the announcement stays">' +
                   '<option value="dismissable">Students can dismiss it</option>' +
                   '<option value="timed">Auto-clear after a few minutes</option>' +
                   '<option value="persistent">Stays until I clear it</option>' +
                 '</select>' +
-                '<input type="text" inputmode="numeric" id="annMinutes" class="mono" value="5" style="display:none;width:64px;">' +
+                '<input type="text" inputmode="numeric" id="annMinutes" class="mono" value="5" aria-label="Minutes before it clears" style="display:none;width:64px;">' +
                 '<button class="btn btn-primary" id="annPostBtn" style="width:auto;">Post</button>' +
               '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="queue-scroll"><div class="queue-list" id="queueList"></div></div>' +
+        '<div class="queue-scroll" tabindex="0" role="region" aria-label="Raised hands queue"><div class="queue-list" id="queueList"></div></div>' +
       '</div>' +
       '<div class="board-footer"><button class="btn btn-ghost" id="blockedBtn" style="display:none;">Blocked (0)</button><button class="btn btn-danger-ghost" id="clearHandsBtn">Clear hands</button><button class="btn btn-danger-ghost" id="endBtn">End session</button></div>',
       true
@@ -2097,7 +2121,7 @@ import { firebaseConfig } from "./firebase-config.js";
       questionSectionEl.innerHTML =
         '<div class="question-box">' +
           '<h3>Ask a question</h3>' +
-          '<textarea id="qInput" maxlength="300" placeholder="Type your question for the teacher…"></textarea>' +
+          '<textarea id="qInput" maxlength="300" aria-label="Your question" placeholder="Type your question for the teacher…"></textarea>' +
           '<label class="note-share"><input type="checkbox" id="qAnon"> Ask anonymously (your teacher won&rsquo;t see your name)</label>' +
           '<button class="btn btn-primary q-submit-btn" id="qSubmitBtn">Submit question</button>' +
         '</div>';
@@ -2196,7 +2220,7 @@ import { firebaseConfig } from "./firebase-config.js";
           '</div>' +
           '<button class="note-toggle" id="noteToggle">' + (noteText ? 'Edit your note' : '+ Add a note to yourself') + '</button>' +
           '<div class="note-box" id="noteBox" style="display:' + (noteText ? 'block' : 'none') + ';">' +
-            '<textarea id="noteInput" maxlength="200" placeholder="What did you want to ask or remember?">' + esc(noteText) + '</textarea>' +
+            '<textarea id="noteInput" maxlength="200" aria-label="Your private note" placeholder="What did you want to ask or remember?">' + esc(noteText) + '</textarea>' +
             '<label class="note-share"><input type="checkbox" id="noteShare"' + (noteShare ? ' checked' : '') + '> Let my teacher see this note too</label>' +
           '</div>' +
           '<div class="link-row" style="margin-top:28px;"><button id="leaveBtn">Not your class? Switch</button></div>' +
@@ -2593,6 +2617,9 @@ import { firebaseConfig } from "./firebase-config.js";
     '✓ Answered': '✓ Respondida', 'Skip →': 'Omitir →', '↩ Move back': '↩ Devolver',
     'Mark answered': 'Marcar como respondida', 'Skip for now': 'Omitir por ahora',
     'Mute': 'Silenciar', 'Unmute': 'Quitar silencio',
+    'How long the announcement stays': 'Cuánto tiempo permanece el anuncio', 'Minutes before it clears': 'Minutos antes de borrarse',
+    'Announcement text': 'Texto del anuncio', 'Poll question': 'Pregunta de la encuesta', 'Raised hands queue': 'Fila de manos levantadas',
+    'Your question': 'Tu pregunta', 'Your private note': 'Tu nota privada', 'Your suggestion': 'Tu sugerencia',
     'Mute this student from posting questions': 'Silenciar a este estudiante para que no publique preguntas', 'Unmute this student': 'Quitar silencio a este estudiante',
     'Standard': 'Estándar', 'Discussion': 'Discusión', 'Attendance roster': 'Lista de asistencia', 'Polls': 'Encuestas',
     'Adds student questions': 'Agrega preguntas de estudiantes', 'Lists who joined, with CSV export': 'Muestra quién se unió, con exportación a CSV', 'Quick live polls for the class': 'Encuestas rápidas en vivo para la clase',
@@ -2628,7 +2655,7 @@ import { firebaseConfig } from "./firebase-config.js";
     'Light / dark': 'Claro / oscuro', 'Toggle light or dark': 'Cambiar entre claro y oscuro', 'Color theme': 'Tema de color',
     'Ocean': 'Océano', 'Slate': 'Pizarra', 'Forest': 'Bosque', 'Sunset': 'Atardecer', 'Pink': 'Rosa',
     'Join by QR code': 'Unirse con código QR', 'Blocked students': 'Estudiantes bloqueados', 'Session stats ': 'Estadísticas de la sesión',
-    'Privacy': 'Privacidad', 'Terms': 'Términos',
+    'Privacy': 'Privacidad', 'Terms': 'Términos', 'Licenses': 'Licencias',
     'RaiseMyHand has hit its free daily limit. It resets overnight (Pacific time), so please try again tomorrow.': 'RaiseMyHand alcanzó su límite diario gratuito. Se reinicia durante la noche (hora del Pacífico); inténtalo de nuevo mañana.',
     'You’re offline — reconnecting… Changes will sync when you’re back.': 'Sin conexión: reconectando… Los cambios se sincronizarán cuando vuelvas.',
     'Anonymous': 'Anónimo',

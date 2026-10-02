@@ -4,9 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy – RaiseMyHand</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
   :root{ --bg:#EEF4FB; --surface:#fff; --ink:#0C1A2B; --soft:#33475E; --line:#B9CBE0; --accent:#1F4E8C; }
   @media (prefers-color-scheme: dark){
@@ -35,12 +33,12 @@
 <main>
 <a class="back" href="./">&larr; RaiseMyHand</a>
 <h1>Privacy Policy</h1>
-<p class="meta">Effective September 26, 2026 &middot; Operated by [OPERATOR NAME] (&ldquo;we&rdquo;, &ldquo;us&rdquo;) &middot; Contact: [CONTACT EMAIL]</p>
+<p class="meta">Effective October 2, 2026 &middot; Operated by [OPERATOR NAME] (&ldquo;we&rdquo;, &ldquo;us&rdquo;) &middot; Contact: [CONTACT EMAIL]</p>
 
 <div class="summary">
   <strong>The short version</strong>
   <ul>
-    <li>No accounts, no email addresses, no passwords, no ads, no analytics, no tracking across sites.</li>
+    <li>No accounts, no email addresses, no passwords, no ads, no analytics, no cookies, no tracking across sites.</li>
     <li>A student&rsquo;s name and seat are optional. Use a first name or nickname.</li>
     <li>Anyone who has a class code can see that class&rsquo;s live queue and questions. Treat the code like a room number, not a secret.</li>
     <li>Queue entries and questions are meant to be short-lived and are deleted when the teacher clears or ends the session, or after they expire.</li>
@@ -79,9 +77,9 @@
 
 <h2>4. How long information is kept</h2>
 <ul>
-  <li><strong>Queue entries and questions:</strong> removed when a teacher lowers a hand, marks it helped, clears the queue or questions, or ends the session. Each also carries a 24-hour expiry, and expired items are cleaned up the next time someone opens that session. A session nobody opens again may keep its queue entries until cleanup runs.</li>
+  <li><strong>Queue entries and questions:</strong> removed when a teacher lowers a hand, marks it helped, clears the queue or questions, or ends the session. Each also carries a 24-hour expiry. An automated cleanup job runs once a day and deletes anything past its expiry, and expired items are also removed whenever someone opens that session, so leftovers should not remain longer than about two days.</li>
   <li><strong>Roster and polls:</strong> the roster is deleted when the teacher turns Roster off, clears or ends the session. Polls and votes are deleted when a new poll starts, the Polls mode is turned off, or the session ends. Both also carry the same 24-hour expiry.</li>
-  <li><strong>Session record</strong> (code, class name, teacher key, settings; no participant data): kept so a teacher can reuse the same code, until the teacher ends the session. A code left unused for a long period may be reclaimed for a new session, which deletes the old record.</li>
+  <li><strong>Session record</strong> (code, class name, settings, and the separately stored private key; no participant data): kept so a teacher can reuse the same code, until the teacher ends the session. The daily cleanup job deletes any session that has gone 75 days without use, which frees the code.</li>
   <li><strong>Mute and block lists:</strong> apply only to one session and are cleared when the session is reset, ended, or reclaimed.</li>
   <li><strong>On your device:</strong> the app saves preferences (theme, layout), the last class you joined, your name and seat, draft notes, a teacher&rsquo;s reopen details, and a teacher&rsquo;s optional session statistics (counts, wait times, and the names shown for helped students, removed after 24 hours) in your browser&rsquo;s local storage so the page can resume. You can clear this at any time in your browser settings.</li>
   <li><strong>Feedback messages:</strong> kept until reviewed, then deleted or retained without identifying details.</li>
@@ -95,31 +93,36 @@
 <p>We do not sell or rent information, and we do not share it for advertising. We rely on these service providers to operate the site:</p>
 <ul>
   <li><strong>Google (Firebase Hosting, Authentication, Cloud Firestore)</strong> &mdash; hosts the site and stores session data. Their handling is described in <a href="https://firebase.google.com/support/privacy" rel="noopener">Firebase&rsquo;s privacy information</a>.</li>
-  <li><strong>Google Fonts</strong> &mdash; serves the site&rsquo;s typefaces, so your browser contacts Google when a page loads.</li>
-  <li><strong>jsDelivr</strong> &mdash; serves a small open-source library used to draw QR codes, so your browser contacts it when a page loads.</li>
+  <li><strong>GitHub</strong> &mdash; hosts our source code and runs the daily cleanup job. It handles our code and aggregate counts only, never participant data.</li>
 </ul>
+<p>The site&rsquo;s fonts and the QR-code library are served from our own site, so loading a page does not send your address to any other third party. Google acts as our service provider (processor) for the Firebase services above under its standard data processing terms.</p>
 <p>We may disclose information if required by law or to protect the safety of users or the service.</p>
 
-<h2>7. Security</h2>
-<p>Traffic is encrypted in transit (HTTPS), and database access is restricted by security rules to the actions the app performs. No system is perfectly secure, and because class codes are meant to be shared in a room, they should not be treated as private. Do not enter sensitive information.</p>
+<h2>7. Cookies, local storage, and tracking</h2>
+<p>RaiseMyHand does not use cookies, advertising or analytics tools, or any tracking across websites. It uses your browser&rsquo;s local storage and IndexedDB only for things the service needs to work: your preferences, your place in a class, and the anonymous device ID described above. These are strictly necessary, so no consent banner is shown. Because we do not track you across sites, there is nothing for a &ldquo;Do Not Track&rdquo; signal to change; everyone is treated the same.</p>
 
-<h2>8. Your choices and requests</h2>
+<h2>8. Security</h2>
+<p>Traffic is encrypted in transit (HTTPS), and database access is restricted by security rules to the actions the app performs. No system is perfectly secure, and because class codes are meant to be shared in a room, they should not be treated as private. Do not enter sensitive information. If we learn of a security incident that affects your information, we will notify the people and authorities required by law.</p>
+
+<h2>9. Your choices and requests</h2>
 <ul>
   <li>Names, seats, and notes are optional; you can lower your hand or leave a class at any time, which removes your queue entry.</li>
   <li>Because we do not keep accounts, we cannot look someone up by name. To request deletion of information, email us with the class code and approximate time, and we will remove what we can find.</li>
-  <li>Depending on where you live, you may have rights to access, correct, or delete personal information. Contact us to exercise them.</li>
+  <li>Depending on where you live, you may have rights to access, correct, delete, or restrict the use of personal information, to object to its use, and to complain to your local data-protection authority. Contact us to exercise them.</li>
+  <li>If the EU or UK GDPR applies to you: we handle information to provide the classroom service you or your school asked for, and, on the basis of our legitimate interest, to keep it secure and prevent abuse. We do not make decisions about people by automated means.</li>
+  <li>California residents: we do not sell or share personal information as those terms are defined in California law.</li>
 </ul>
 
-<h2>9. International use</h2>
-<p>Our providers operate data centers that may be outside your country. By using the service you understand your information may be processed there.</p>
+<h2>10. International use</h2>
+<p>Our providers operate data centers that may be outside your country; the project&rsquo;s database is in the United States (us-west4). By using the service you understand your information may be processed there.</p>
 
-<h2>10. Changes</h2>
+<h2>11. Changes</h2>
 <p>We may update this policy. The effective date above shows the latest version, and we will note material changes on the site.</p>
 
-<h2>11. Contact</h2>
+<h2>12. Contact</h2>
 <p>Questions or requests: [CONTACT EMAIL].</p>
 
-<p class="foot"><a href="terms.html">Terms of Use</a> &middot; <a href="./">Back to RaiseMyHand</a></p>
+<p class="foot"><a href="terms.html">Terms of Use</a> &middot; <a href="licenses.html">Licenses</a> &middot; <a href="./">Back to RaiseMyHand</a></p>
 </main>
 </body>
 </html>
