@@ -21,6 +21,11 @@
     footer { margin-top: 30px; text-align: center; }
     .settings-link { color: var(--text-dim); font-size: 13px; text-decoration: none; }
     .settings-link:hover { color: var(--text); }
+    .feedback-modal { position: fixed; inset: 0; background: rgba(5,5,15,0.85); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .feedback-modal[hidden] { display: none; }
+    .feedback-box { max-width: 420px; width: 100%; position: relative; }
+    #feedback-message { width: 100%; font-family: inherit; font-size: 12px; background: var(--panel-light); color: var(--text); border: 2px solid var(--border); padding: 8px; box-sizing: border-box; }
+    .feedback-honeypot { position: absolute; left: -9999px; }
     #terms-gate { position: fixed; inset: 0; background: rgba(5,5,15,0.92); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
     #terms-gate .terms-box { max-width: 440px; }
     #terms-gate label { display: flex; align-items: flex-start; gap: 8px; font-size: 11px; cursor: pointer; }
@@ -60,6 +65,7 @@
 
   <section id="puzzle-screen">
     <button class="close-x" id="back-btn">← Back</button>
+    <button class="close-x" id="feedback-btn" title="Report something confusing or wrong">💬 Feedback</button>
     <h2 id="puzzle-title"></h2>
     <span class="badge" id="puzzle-topic"></span>
 
@@ -93,7 +99,27 @@
     <a href="admin.html" class="settings-link" title="Level editor">⚙ settings</a>
   </footer>
 
+  <div id="feedback-modal" class="feedback-modal" hidden>
+    <div class="panel stack feedback-box">
+      <button type="button" id="feedback-close" class="close-x" aria-label="Close feedback form">✕</button>
+      <h2 style="margin-top:0;">Feedback</h2>
+      <p style="font-size:11px; line-height:1.6;">Something confusing, wrong, or broken on this level? Tell us what happened.</p>
+      <form id="feedback-form" name="feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="feedback" />
+        <input type="hidden" name="game" value="Circuit Quest" />
+        <input type="hidden" name="level" id="feedback-level-field" />
+        <p class="feedback-honeypot"><label>Don't fill this out: <input name="bot-field" /></label></p>
+        <textarea id="feedback-message" name="message" rows="4" placeholder="What's wrong or confusing?" required></textarea>
+        <div class="row" style="margin-top:10px; justify-content:space-between;">
+          <button type="submit" class="primary">Send</button>
+          <span id="feedback-status" class="dim" style="font-size:10px;"></span>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="js/terms-gate.js"></script>
+  <script src="js/feedback-widget.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/circuit-render.js"></script>
