@@ -50,6 +50,12 @@ button:hover:not(:disabled),
   background: var(--accent);
   color: #0f1021;
 }
+@media (prefers-reduced-motion: reduce) {
+  button,
+  .btn {
+    transition: none;
+  }
+}
 button:active:not(:disabled) {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 #000;
