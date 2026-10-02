@@ -2599,7 +2599,7 @@ import { firebaseConfig } from "./firebase-config.js";
   // Everyone sees this first. Nothing is stored on our servers (not even the
   // anonymous device ID) until they agree. Bump TERMS_VERSION whenever the
   // Terms or Privacy Policy change in a way people should re-accept.
-  var TERMS_VERSION = '2026-10-02';
+  var TERMS_VERSION = '2026-10-02.2';
   function hasAgreed() {
     var a = loadLS('rmh_terms_v1');
     return !!(a && a.v === TERMS_VERSION);
@@ -2620,14 +2620,20 @@ import { firebaseConfig } from "./firebase-config.js";
           '<li>If you are under 13, use RaiseMyHand only when your teacher asks you to.</li>' +
         '</ul>' +
         '<label class="note-share gate-agree"><input type="checkbox" id="agreeBox"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> and the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span></label>' +
+        '<label class="note-share gate-agree"><input type="checkbox" id="storageBox"> <span>I agree to keep only strictly necessary storage on my device (my settings and my place in a class).</span></label>' +
+        '<div class="hint gate-note">RaiseMyHand does not use cookies or similar storage for anything else: no ads, no analytics, no tracking.</div>' +
         '<button class="btn btn-primary" id="agreeBtn" disabled>Continue</button>' +
+        '<div class="hint gate-note">Both boxes are needed because the site cannot work without them. If you do not agree, just close this page; nothing has been sent to us.</div>' +
       '</div>'
     );
     var box = root.querySelector('#agreeBox');
+    var box2 = root.querySelector('#storageBox');
     var btn = root.querySelector('#agreeBtn');
-    box.addEventListener('change', function () { btn.disabled = !box.checked; });
+    function syncGate() { btn.disabled = !(box.checked && box2.checked); }
+    box.addEventListener('change', syncGate);
+    box2.addEventListener('change', syncGate);
     btn.addEventListener('click', function () {
-      if (!box.checked) return;
+      if (!(box.checked && box2.checked)) return;
       saveLS('rmh_terms_v1', { v: TERMS_VERSION, at: Date.now() });
       onAgree();
     });
@@ -2725,6 +2731,9 @@ import { firebaseConfig } from "./firebase-config.js";
     'What you enter is visible to your teacher and anyone with the class code, and it is deleted soon after.': 'Lo que escribes lo ven tu docente y cualquiera con el código de clase, y se borra poco después.',
     'If you are under 13, use RaiseMyHand only when your teacher asks you to.': 'Si tienes menos de 13 años, usa RaiseMyHand solo cuando tu docente te lo pida.',
     'I agree to the': 'Acepto los', 'and the': 'y la', 'Terms of Use': 'Términos de uso', 'Privacy Policy': 'Política de privacidad',
+    'I agree to keep only strictly necessary storage on my device (my settings and my place in a class).': 'Acepto que solo se guarde en mi dispositivo lo estrictamente necesario (mis ajustes y mi lugar en una clase).',
+    'RaiseMyHand does not use cookies or similar storage for anything else: no ads, no analytics, no tracking.': 'RaiseMyHand no usa cookies ni almacenamiento similar para nada más: sin anuncios, sin análisis, sin rastreo.',
+    'Both boxes are needed because the site cannot work without them. If you do not agree, just close this page; nothing has been sent to us.': 'Se necesitan ambas casillas porque el sitio no puede funcionar sin ellas. Si no aceptas, cierra esta página; no se nos ha enviado nada.',
     'Continue': 'Continuar',
     'Mute': 'Silenciar', 'Unmute': 'Quitar silencio', 'Move up': 'Mover arriba', 'Move down': 'Mover abajo',
     'How long the announcement stays': 'Cuánto tiempo permanece el anuncio', 'Minutes before it clears': 'Minutos antes de borrarse',
