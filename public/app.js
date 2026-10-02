@@ -786,7 +786,7 @@ import { firebaseConfig } from "./firebase-config.js";
         '<div class="board-panels-right" id="boardPanelsRight">' +
           '<div class="discuss-card" id="discussCard" style="display:none;">' +
             '<div class="discuss-head">' +
-              '<h3>Student Questions</h3>' +
+              '<h3 aria-level="2">Student Questions</h3>' +
               '<div class="discuss-actions">' +
                 '<span class="discuss-count" id="discussCount">0 questions</span>' +
                 '<button class="btn btn-danger-ghost" id="clearQsBtn">Clear questions</button>' +
@@ -801,12 +801,12 @@ import { firebaseConfig } from "./firebase-config.js";
             '</div>' +
           '</div>' +
           '<div class="discuss-card roster-card" id="rosterCard" style="display:none;">' +
-            '<div class="discuss-head"><h3>Roster</h3><div class="discuss-actions"><span class="discuss-count" id="rosterCount">0 joined</span><button class="btn btn-ghost" id="rosterCsv" disabled>CSV</button></div></div>' +
+            '<div class="discuss-head"><h3 aria-level="2">Roster</h3><div class="discuss-actions"><span class="discuss-count" id="rosterCount">0 joined</span><button class="btn btn-ghost" id="rosterCsv" disabled>CSV</button></div></div>' +
             '<div class="roster-list" id="rosterList"></div>' +
             '<div class="qr-hint" style="text-align:left;margin:8px 0 0;">Only you can see this. It&rsquo;s deleted when you turn Roster off or end the session.</div>' +
           '</div>' +
           '<div class="discuss-card polls-card" id="pollsCard" style="display:none;">' +
-            '<div class="discuss-head"><h3>Poll</h3><span class="discuss-count" id="pollStatus"></span></div>' +
+            '<div class="discuss-head"><h3 aria-level="2">Poll</h3><span class="discuss-count" id="pollStatus"></span></div>' +
             '<div id="pollBuilder">' +
               '<input type="text" id="pollQ" maxlength="200" aria-label="Poll question" placeholder="Ask the class a question">' +
               '<div class="poll-opts" id="pollOpts"></div>' +
@@ -823,7 +823,7 @@ import { firebaseConfig } from "./firebase-config.js";
             '</div>' +
           '</div>' +
           '<div class="announce-card" id="announceCard">' +
-            '<div class="announce-card-head"><h3>Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
+            '<div class="announce-card-head"><h3 aria-level="2">Announcement</h3><span class="announce-status" id="announceStatus">None posted</span></div>' +
             '<div id="announceCurrent" style="display:none;"></div>' +
             '<div class="announce-form">' +
               '<textarea id="annText" maxlength="200" aria-label="Announcement text" placeholder="e.g. Quiz starts in 5 minutes"></textarea>' +
@@ -1191,7 +1191,7 @@ import { firebaseConfig } from "./firebase-config.js";
       blockedOverlay.className = 'qr-overlay';
       blockedOverlay.innerHTML =
         '<div class="qr-card" role="dialog" aria-label="Blocked students">' +
-          '<h3 style="margin-bottom:6px;">Blocked this session</h3>' +
+          '<h3 aria-level="2" style="margin-bottom:6px;">Blocked this session</h3>' +
           '<div class="qr-hint">Blocks end with this session.</div>' +
           (ids.length ? ids.map(function (id) {
             return '<div class="q-item" style="text-align:left;"><div class="q-content"><div class="q-text">' + esc(String(blockedUsers[id])) + '</div></div>' +
@@ -1379,7 +1379,7 @@ import { firebaseConfig } from "./firebase-config.js";
       statsOverlay.className = 'qr-overlay';
       statsOverlay.innerHTML =
         '<div class="qr-card" role="dialog" aria-label="Session stats" style="text-align:left;">' +
-          '<h3 style="margin-bottom:10px;">Session stats</h3>' +
+          '<h3 aria-level="2" style="margin-bottom:10px;">Session stats</h3>' +
           '<div class="stats-grid">' +
             '<div><b>' + s.raised + '</b><span>hands raised</span></div>' +
             '<div><b>' + s.helped + '</b><span>marked helped</span></div>' +
@@ -2000,7 +2000,7 @@ import { firebaseConfig } from "./firebase-config.js";
       if (!studentPoll) { pollSectionEl.style.display = 'none'; pollSectionEl.innerHTML = ''; return; }
       pollSectionEl.style.display = 'block';
       var open = studentPoll.status === 'open';
-      var html = '<div class="question-box"><h3>' + (open ? 'Poll' : 'Poll results') + '</h3><div class="poll-q">' + esc(studentPoll.question) + '</div>';
+      var html = '<div class="question-box"><h3 aria-level="2">' + (open ? 'Poll' : 'Poll results') + '</h3><div class="poll-q">' + esc(studentPoll.question) + '</div>';
       if (open) {
         html += (studentPoll.options || []).map(function (o, i) {
           return '<button class="poll-choice' + (myChoice === i ? ' on' : '') + '" data-i="' + i + '">' + esc(o) + (myChoice === i ? ' &#10003;' : '') + '</button>';
@@ -2066,7 +2066,7 @@ import { firebaseConfig } from "./firebase-config.js";
         .slice(0, 15);
       if (!list.length) { classQsEl.style.display = 'none'; classQsEl.innerHTML = ''; return; }
       classQsEl.style.display = 'block';
-      classQsEl.innerHTML = '<div class="question-box"><h3>Questions from the class</h3>' + list.map(function (q) {
+      classQsEl.innerHTML = '<div class="question-box"><h3 aria-level="2">Questions from the class</h3>' + list.map(function (q) {
         var mine = !!(uid && q.upvoters[uid]);
         return '<div class="q-item"><div class="q-content"><div class="q-text">' + esc(q.text) + '</div></div>' +
           '<div class="q-actions"><button class="plus-one' + (mine ? ' on' : '') + '" data-id="' + esc(q.id) + '" aria-pressed="' + mine + '" title="I have this question too">&#9650; ' + q.votes + '</button></div></div>';
@@ -2120,7 +2120,7 @@ import { firebaseConfig } from "./firebase-config.js";
 
       questionSectionEl.innerHTML =
         '<div class="question-box">' +
-          '<h3>Ask a question</h3>' +
+          '<h3 aria-level="2">Ask a question</h3>' +
           '<textarea id="qInput" maxlength="300" aria-label="Your question" placeholder="Type your question for the teacher…"></textarea>' +
           '<label class="note-share"><input type="checkbox" id="qAnon"> Ask anonymously (your teacher won&rsquo;t see your name)</label>' +
           '<button class="btn btn-primary q-submit-btn" id="qSubmitBtn">Submit question</button>' +
