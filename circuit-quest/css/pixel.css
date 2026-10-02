@@ -56,6 +56,14 @@ button:hover:not(:disabled),
     transition: none;
   }
 }
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible,
+input:focus-visible,
+canvas:focus-visible {
+  outline: 3px solid var(--accent2);
+  outline-offset: 2px;
+}
 button:active:not(:disabled) {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 #000;

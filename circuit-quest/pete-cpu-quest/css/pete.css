@@ -60,6 +60,14 @@ button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
+button:focus-visible,
+.btn:focus-visible,
+a:focus-visible,
+input:focus-visible,
+canvas:focus-visible {
+  outline: 3px solid var(--world-datapath);
+  outline-offset: 2px;
+}
 button.primary {
   background: var(--accent);
   color: #121018;
