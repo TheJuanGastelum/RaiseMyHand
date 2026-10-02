@@ -1,5 +1,6 @@
 // Per-level feedback -> submits to Netlify Forms (no backend needed).
 // Submissions land in the Netlify dashboard under Forms > "feedback".
+// (Forms must be enabled in Netlify site settings for submissions to be captured — confirmed enabled 2026-10-02.)
 (function () {
   const modal = document.getElementById("feedback-modal");
   const btn = document.getElementById("feedback-btn");
