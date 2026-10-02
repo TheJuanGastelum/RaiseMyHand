@@ -1633,7 +1633,65 @@ import { firebaseConfig } from "./firebase-config.js";
       if (rosterMode) startRosterWatch(); else stopRosterWatch();
       var pid = pollsMode ? (data.pollId || null) : null;
       if (pid !== currentPollId) watchPoll(pid);
+      updateMoveBtns();
     }
+
+    // ---- Rearrangeable panels (order saved on this device only) ----
+    // Cards are physically reordered in the page, so the on-screen order
+    // always matches the keyboard and screen-reader order.
+    var PANEL_IDS = ['announceCard', 'pollsCard', 'discussCard', 'rosterCard'];
+    var DEFAULT_PANEL_ORDER = ['discussCard', 'rosterCard', 'pollsCard', 'announceCard'];
+    var panelsBox = root.querySelector('#boardPanelsRight');
+    var panelOrder = (function () {
+      var saved = loadLS('rmh_panel_order_v1');
+      if (!Array.isArray(saved)) return DEFAULT_PANEL_ORDER.slice();
+      var clean = saved.filter(function (id, i) { return PANEL_IDS.indexOf(id) !== -1 && saved.indexOf(id) === i; });
+      DEFAULT_PANEL_ORDER.forEach(function (id) { if (clean.indexOf(id) === -1) clean.push(id); });
+      return clean;
+    })();
+    function panelEl(id) { return root.querySelector('#' + id); }
+    function panelVisible(id) { var el = panelEl(id); return !!el && el.style.display !== 'none'; }
+    PANEL_IDS.forEach(function (id) {
+      var el = panelEl(id);
+      var head = el.querySelector('.discuss-head, .announce-card-head');
+      var box = document.createElement('span');
+      box.className = 'move-btns';
+      box.innerHTML =
+        '<button type="button" class="move-btn" data-id="' + id + '" data-dir="-1" aria-label="Move up" title="Move up">&#9650;</button>' +
+        '<button type="button" class="move-btn" data-id="' + id + '" data-dir="1" aria-label="Move down" title="Move down">&#9660;</button>';
+      head.appendChild(box);
+    });
+    function applyPanelOrder() {
+      panelOrder.forEach(function (id) { panelsBox.appendChild(panelEl(id)); });
+      updateMoveBtns();
+    }
+    function updateMoveBtns() {
+      var vis = panelOrder.filter(panelVisible);
+      PANEL_IDS.forEach(function (id) {
+        var i = vis.indexOf(id);
+        panelEl(id).querySelectorAll('.move-btn').forEach(function (b) {
+          var dir = parseInt(b.getAttribute('data-dir'), 10);
+          b.disabled = i === -1 || (dir < 0 && i === 0) || (dir > 0 && i === vis.length - 1);
+        });
+      });
+    }
+    panelsBox.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.move-btn');
+      if (!b || b.disabled) return;
+      var id = b.getAttribute('data-id');
+      var dir = parseInt(b.getAttribute('data-dir'), 10);
+      var vis = panelOrder.filter(panelVisible);
+      var other = vis[vis.indexOf(id) + dir];
+      if (!other) return;
+      var a = panelOrder.indexOf(id), c = panelOrder.indexOf(other);
+      panelOrder[a] = other; panelOrder[c] = id;
+      saveLS('rmh_panel_order_v1', panelOrder);
+      applyPanelOrder();
+      var again = panelEl(id).querySelector('.move-btn[data-dir="' + dir + '"]');
+      if (again && !again.disabled) again.focus();
+      else { var alt = panelEl(id).querySelector('.move-btn:not(:disabled)'); if (alt) alt.focus(); }
+    });
+    applyPanelOrder();
 
     function updateQVisBtn() {
       qVisBtn.innerHTML = questionsVisible ? icons.eye : icons.eyeOff;
@@ -2616,7 +2674,7 @@ import { firebaseConfig } from "./firebase-config.js";
     'No questions yet — students can type questions from their devices.': 'Aún no hay preguntas: los estudiantes pueden escribirlas desde sus dispositivos.',
     '✓ Answered': '✓ Respondida', 'Skip →': 'Omitir →', '↩ Move back': '↩ Devolver',
     'Mark answered': 'Marcar como respondida', 'Skip for now': 'Omitir por ahora',
-    'Mute': 'Silenciar', 'Unmute': 'Quitar silencio',
+    'Mute': 'Silenciar', 'Unmute': 'Quitar silencio', 'Move up': 'Mover arriba', 'Move down': 'Mover abajo',
     'How long the announcement stays': 'Cuánto tiempo permanece el anuncio', 'Minutes before it clears': 'Minutos antes de borrarse',
     'Announcement text': 'Texto del anuncio', 'Poll question': 'Pregunta de la encuesta', 'Raised hands queue': 'Fila de manos levantadas',
     'Your question': 'Tu pregunta', 'Your private note': 'Tu nota privada', 'Your suggestion': 'Tu sugerencia',

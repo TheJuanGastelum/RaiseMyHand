@@ -311,6 +311,10 @@
   .poll-choice:hover{ border-color:var(--accent); }
   .poll-choice.on{ border-color:var(--accent); background:var(--accent-soft); }
   .mode-base{ cursor:default; }
+  .move-btns{ display:inline-flex; gap:4px; margin-left:8px; flex:0 0 auto; }
+  .move-btn{ width:28px; height:28px; border-radius:8px; border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); font-size:.62rem; line-height:1; cursor:pointer; padding:0; }
+  .move-btn:hover:not(:disabled){ border-color:var(--accent); color:var(--accent); }
+  .move-btn:disabled{ opacity:.35; cursor:default; }
   .lang-btn{ font-size:.62rem; font-weight:800; letter-spacing:.02em; color:var(--ink-soft); }
   .plus-one{ background:var(--surface); color:var(--ink-soft); border:1.5px solid var(--line); border-radius:999px; padding:4px 12px; font-size:.8rem; font-weight:800; cursor:pointer; font-family:inherit; }
   .plus-one.on{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
