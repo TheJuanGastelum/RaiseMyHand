@@ -2595,7 +2595,46 @@ import { firebaseConfig } from "./firebase-config.js";
   }
 
   // ---------- Boot ----------
-  function boot() {
+  // ---------- Terms gate ----------
+  // Everyone sees this first. Nothing is stored on our servers (not even the
+  // anonymous device ID) until they agree. Bump TERMS_VERSION whenever the
+  // Terms or Privacy Policy change in a way people should re-accept.
+  var TERMS_VERSION = '2026-10-02';
+  function hasAgreed() {
+    var a = loadLS('rmh_terms_v1');
+    return !!(a && a.v === TERMS_VERSION);
+  }
+
+  function renderTermsGate(onAgree) {
+    topbarMeta.innerHTML = '';
+    topbarMeta.appendChild(renderThemeSwitch());
+    topbarMeta.appendChild(renderLangButton());
+    var root = mount(
+      '<div class="card">' +
+        '<h2>Before you start</h2>' +
+        '<div class="sub">RaiseMyHand is a free classroom tool. Here is the short version:</div>' +
+        '<ul class="gate-list">' +
+          '<li>No accounts, no ads, no tracking, and no cookies.</li>' +
+          '<li>Names and seats are optional. A first name or nickname is fine.</li>' +
+          '<li>What you enter is visible to your teacher and anyone with the class code, and it is deleted soon after.</li>' +
+          '<li>If you are under 13, use RaiseMyHand only when your teacher asks you to.</li>' +
+        '</ul>' +
+        '<label class="note-share gate-agree"><input type="checkbox" id="agreeBox"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms of Use</a> and the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a></span></label>' +
+        '<button class="btn btn-primary" id="agreeBtn" disabled>Continue</button>' +
+      '</div>'
+    );
+    var box = root.querySelector('#agreeBox');
+    var btn = root.querySelector('#agreeBtn');
+    box.addEventListener('change', function () { btn.disabled = !box.checked; });
+    btn.addEventListener('click', function () {
+      if (!box.checked) return;
+      saveLS('rmh_terms_v1', { v: TERMS_VERSION, at: Date.now() });
+      onAgree();
+    });
+    box.focus();
+  }
+
+  function startApp() {
     mount('<div class="card"><h2>Connecting&hellip;</h2><div class="sub">Setting up your session.</div></div>');
     waitForAuth().then(function () {
       if (readResumeParam()) renderTeacherStart();
@@ -2604,6 +2643,11 @@ import { firebaseConfig } from "./firebase-config.js";
     }).catch(function () {
       mount('<div class="card"><h2>Can&rsquo;t connect</h2><div class="sub">Check your internet connection and reload the page. If this keeps happening, the site may not be configured correctly yet.</div></div>');
     });
+  }
+
+  function boot() {
+    if (hasAgreed()) startApp();
+    else renderTermsGate(startApp);
   }
 
   // ---------- Spanish (auto-detected, switchable from the top bar) ----------
@@ -2674,6 +2718,14 @@ import { firebaseConfig } from "./firebase-config.js";
     'No questions yet — students can type questions from their devices.': 'Aún no hay preguntas: los estudiantes pueden escribirlas desde sus dispositivos.',
     '✓ Answered': '✓ Respondida', 'Skip →': 'Omitir →', '↩ Move back': '↩ Devolver',
     'Mark answered': 'Marcar como respondida', 'Skip for now': 'Omitir por ahora',
+    'Before you start': 'Antes de empezar',
+    'RaiseMyHand is a free classroom tool. Here is the short version:': 'RaiseMyHand es una herramienta gratuita para el aula. En pocas palabras:',
+    'No accounts, no ads, no tracking, and no cookies.': 'Sin cuentas, sin anuncios, sin rastreo y sin cookies.',
+    'Names and seats are optional. A first name or nickname is fine.': 'El nombre y el asiento son opcionales. Basta un nombre de pila o un apodo.',
+    'What you enter is visible to your teacher and anyone with the class code, and it is deleted soon after.': 'Lo que escribes lo ven tu docente y cualquiera con el código de clase, y se borra poco después.',
+    'If you are under 13, use RaiseMyHand only when your teacher asks you to.': 'Si tienes menos de 13 años, usa RaiseMyHand solo cuando tu docente te lo pida.',
+    'I agree to the': 'Acepto los', 'and the': 'y la', 'Terms of Use': 'Términos de uso', 'Privacy Policy': 'Política de privacidad',
+    'Continue': 'Continuar',
     'Mute': 'Silenciar', 'Unmute': 'Quitar silencio', 'Move up': 'Mover arriba', 'Move down': 'Mover abajo',
     'How long the announcement stays': 'Cuánto tiempo permanece el anuncio', 'Minutes before it clears': 'Minutos antes de borrarse',
     'Announcement text': 'Texto del anuncio', 'Poll question': 'Pregunta de la encuesta', 'Raised hands queue': 'Fila de manos levantadas',
