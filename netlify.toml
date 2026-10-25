@@ -1,0 +1,3 @@
+# The site is the hub plus the four study games, all static files in site/.
+[build]
+  publish = "site"

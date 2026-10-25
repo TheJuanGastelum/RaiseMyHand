@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Study Games</title>
+<meta name="description" content="Four study games. Walk the wildcat engineer to a building to start.">
+<style>
+:root{--bg:#0b0d1c;--panel:#181b36;--line:#3d4380;--ink:#f3f4fb;--dim:#a4a9d6;--accent:#ffb454;--mono:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+@media (prefers-color-scheme: light){:root:not([data-theme=dark]){--bg:#0b0d1c}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:18px;line-height:1.5}
+body{min-height:100vh;background:radial-gradient(1200px 500px at 50% -10%,#ffb45422,transparent 60%),var(--bg)}
+main{max-width:1000px;margin:0 auto;padding:18px 16px 40px}
+h1{font:800 clamp(1.5rem,5vw,2.4rem) var(--mono);color:var(--accent);margin:8px 0 2px;letter-spacing:.02em}
+p.sub{margin:0 0 14px;color:var(--dim)}
+.stagewrap{border:3px solid var(--line);border-radius:16px;overflow:hidden;background:#05060f;box-shadow:0 6px 0 #0007}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:manipulation;cursor:pointer}
+canvas:focus-visible{outline:3px solid #ffe66d;outline-offset:-3px}
+.hint{font:700 .9rem var(--mono);color:var(--dim);margin:10px 0 0;min-height:1.5em;text-align:center}
+.hint b{color:var(--accent)}
+nav ul{list-style:none;margin:18px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+nav a{display:block;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);text-decoration:none;box-shadow:0 3px 0 #0007}
+nav a:hover{background:#232749}
+nav a:focus-visible{outline:3px solid #ffe66d;outline-offset:2px}
+nav a b{display:block;font:800 1rem var(--mono)}
+nav a span{color:var(--dim);font-size:.85rem}
+.tag{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px}
+footer{margin-top:22px;color:var(--dim);font-size:.82rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1>Wildcat Engineer’s Study Games</h1>
+  <p class="sub">Walk to a building and press <b>Enter</b>. Move with <b>W A S D</b> or the arrow keys, or tap where you want to go.</p>
+  <div class="stagewrap"><canvas id="c" width="960" height="540" tabindex="0" role="application" aria-label="Main screen. A wildcat engineer stands on a plaza in front of four buildings, one for each game. Walk with the arrow keys and press Enter at a door. The same four games are also listed as links below."></canvas></div>
+  <p class="hint" id="hint" aria-live="polite"></p>
+  <nav aria-label="The four games">
+    <ul id="list"></ul>
+  </nav>
+  <footer>Your progress is saved in this browser.</footer>
+</main>
+<script>
+(function () {
+  const GAMES = [
+    { id: 'circuit-basics-quest', name: 'Circuit Basics Quest', blurb: 'Resistors, sources, op amps, RC and RLC', levels: 32, color: '#4aa3ff', dark: '#173a66', icon: 'R' },
+    { id: 'power-keeper', name: 'Power Keeper', blurb: 'AC power, three-phase, Laplace', levels: 16, color: '#7ef7c1', dark: '#14503c', icon: 'P' },
+    { id: 'cpu-quest', name: 'CPU Quest', blurb: 'Registers, pipelines, hazards', levels: 22, color: '#ffb454', dark: '#6a4310', icon: 'C' },
+    { id: 'embedded-quest', name: 'Embedded Quest', blurb: 'Registers, timers, interrupts, PWM', levels: 15, color: '#8ec5ff', dark: '#1f3f66', icon: 'E' },
+  ];
+  const W = 960, H = 540, cv = document.getElementById('c'), ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false;
+  const hint = document.getElementById('hint');
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function progress(g) { try { const s = JSON.parse(localStorage.getItem('studygame_' + g.id)) || {}, L = s.levels || {}; let done = 0, stars = 0; for (const k in L) { if (L[k].done) done++; stars += L[k].stars || 0; } return { done, stars }; } catch (e) { return { done: 0, stars: 0 }; } }
+  GAMES.forEach((g, i) => { g.x = 150 + i * 220; g.p = progress(g); });
+  // link list (also the no-mouse, screen-reader route)
+  const list = document.getElementById('list');
+  GAMES.forEach(g => { const li = document.createElement('li'), a = document.createElement('a'); a.href = g.id + '/'; a.innerHTML = '<b><i class="tag" style="background:' + g.color + '"></i>' + g.name + '</b><span>' + g.blurb + ' · ' + g.p.done + '/' + g.levels + ' levels · ' + g.p.stars + ' stars</span>'; li.append(a); list.append(li); });
+
+  const P = { x: 480, y: 455, vx: 0, vy: 0, face: 1, t: 0, moving: false };
+  const keys = {}, target = { x: null, y: null, go: null };
+  const BOUND = { x0: 40, x1: 920, y0: 372, y1: 505 };
+  const near = () => GAMES.find(g => Math.abs(P.x - g.x) < 48 && P.y < 415);
+  function enter(g) { hint.innerHTML = 'Opening <b>' + g.name + '</b>…'; location.href = g.id + '/'; }
+
+  addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) { keys[k] = true; target.x = null; if (e.target === cv || e.target === document.body) e.preventDefault(); }
+    else if ((k === 'enter' || k === ' ') && (e.target === cv || e.target === document.body)) { const g = near(); if (g) { e.preventDefault(); enter(g); } }
+    else if (/^[1-4]$/.test(k) && (e.target === cv || e.target === document.body)) { target.x = GAMES[+k - 1].x; target.y = 400; target.go = GAMES[+k - 1]; }
+  });
+  addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    const g = GAMES.find(g => Math.abs(x - g.x) < 85 && y > 130 && y < 380);
+    if (g) { target.x = g.x; target.y = 400; target.go = g; } else { target.x = Math.max(BOUND.x0, Math.min(BOUND.x1, x)); target.y = Math.max(BOUND.y0, Math.min(BOUND.y1, y)); target.go = null; }
+    cv.focus({ preventScroll: true });
+  });
+
+  /* ---------- drawing ---------- */
+  const R = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+  const stars = []; for (let i = 0; i < 70; i++) stars.push([(i * 137) % W, (i * 71) % 190, (i % 3) + 1]);
+  function sky() {
+    const gr = ctx.createLinearGradient(0, 0, 0, 340); gr.addColorStop(0, '#070a1f'); gr.addColorStop(1, '#1b2150'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, 340);
+    stars.forEach(s => R(s[0], s[1], s[2], s[2], '#ffffff88'));
+    ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.arc(868, 58, 20, 0, 7); ctx.fill(); ctx.fillStyle = '#0b1030'; ctx.beginPath(); ctx.arc(876, 52, 18, 0, 7); ctx.fill();
+    // far skyline
+    for (let i = 0; i < 24; i++) { const h = 40 + ((i * 53) % 70); R(i * 42, 330 - h, 36, h, '#12163a'); for (let k = 0; k < 4; k++) R(i * 42 + 6 + (k % 2) * 14, 330 - h + 8 + ((k >> 1) * 16), 6, 6, ((i + k) % 3 ? '#ffd86a33' : '#0b0f2c')); }
+  }
+  function ground() {
+    R(0, 330, W, 210, '#242a55'); R(0, 330, W, 6, '#3a4286');
+    for (let i = 0; i < 24; i++) R(i * 42 + 8, 520, 24, 3, '#2f3770'); // dashes
+    R(0, 372, W, 3, '#2f3770'); R(0, 505, W, 3, '#2f3770');
+    // path under each door
+    GAMES.forEach(g => R(g.x - 30, 335, 60, 40, '#2d3466'));
+  }
+  function building(g, glow, t) {
+    const x = g.x - 85, y = 140, w = 170, h = 195;
+    R(x - 4, y - 4, w + 8, h + 4, '#05060f'); R(x, y, w, h, g.dark);
+    R(x, y, w, 10, g.color); // roof trim
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const lit = glow || ((r * 4 + c + g.x) % 3 !== 0); R(x + 14 + c * 38, y + 78 + r * 38, 24, 22, lit ? '#ffe28a' : '#0b0f2c'); R(x + 14 + c * 38, y + 88 + r * 38, 24, 2, '#00000044'); }
+    // sign
+    R(x + 8, y + 18, w - 16, 48, '#05060f'); R(x + 8, y + 18, w - 16, 3, g.color); R(x + 8, y + 63, w - 16, 3, g.color);
+    ctx.fillStyle = g.color; ctx.font = '800 17px ui-monospace,Menlo,Consolas,monospace'; ctx.textAlign = 'center';
+    const words = g.name.split(' '), mid = Math.ceil(words.length / 2); ctx.fillText(words.slice(0, mid).join(' '), g.x, y + 38); ctx.fillText(words.slice(mid).join(' '), g.x, y + 57);
+    // door
+    const dx = g.x - 24, dy = 335 - 74; R(dx - 4, dy - 4, 56, 78, '#05060f'); R(dx, dy, 48, 74, glow ? '#ffe28a' : '#3a2a18'); if (!glow) { R(dx + 38, dy + 36, 5, 5, '#ffd86a'); R(dx + 4, dy + 4, 18, 30, '#4a3622'); R(dx + 26, dy + 4, 18, 30, '#4a3622'); } else { R(dx + 22, dy, 4, 74, '#c98d2a'); }
+    // progress
+    ctx.font = '700 13px ui-monospace,Menlo,Consolas,monospace'; ctx.fillStyle = '#cfd4ff'; ctx.fillText(g.p.done + '/' + g.levels + ' levels   ' + g.p.stars + ' stars', g.x, 358 + 0);
+    ctx.fillStyle = g.color; ctx.font = '800 12px ui-monospace,Menlo,Consolas,monospace'; ctx.fillText(String(GAMES.indexOf(g) + 1), x + 16, y - 10 + 0);
+    if (glow) { ctx.globalAlpha = .18 + (reduce ? 0 : .08 * Math.sin(t * 5)); R(x - 10, y - 10, w + 20, h + 14, g.color); ctx.globalAlpha = 1; }
+  }
+  function cat(t) {
+    const x = Math.round(P.x), y = Math.round(P.y), s = 4, f = P.face, bob = P.moving && !reduce ? Math.round(Math.sin(t * 14)) * 2 : 0, step = P.moving && !reduce ? (Math.sin(t * 14) > 0 ? 1 : -1) : 0;
+    const px = (cx, cy, w, h, c) => R(x + f * cx * s - (f < 0 ? w * s : 0), y - 18 * s + cy * s + bob, w * s, h * s, c);
+    R(x - 22, y + 2, 44, 8, '#00000055'); // shadow
+    // tail
+    const tw = P.moving && !reduce ? Math.round(Math.sin(t * 9)) : 0; px(-6, 9 + tw, 2, 2, '#e8892b'); px(-8, 7 + tw, 2, 3, '#e8892b'); px(-8, 5 + tw, 2, 2, '#f4c27a');
+    // legs
+    px(-2, 15 + (step > 0 ? 0 : 1), 2, 3, '#2a3a8a'); px(1, 15 + (step > 0 ? 1 : 0), 2, 3, '#2a3a8a'); px(-2, 18 - (step > 0 ? 0 : 0), 3, 1, '#1b1f3a'); px(1, 18, 3, 1, '#1b1f3a');
+    // body: overalls
+    px(-3, 9, 7, 6, '#2f56d4'); px(-3, 12, 7, 1, '#c98d2a'); px(-1, 12, 2, 2, '#ffe28a'); px(-3, 9, 2, 2, '#f4c27a'); px(2, 9, 2, 2, '#f4c27a'); px(4, 11, 2, 3, '#e8892b'); // arm
+    // wrench in hand
+    px(5, 13, 1, 3, '#bfc6e8'); px(4, 16, 3, 1, '#bfc6e8');
+    // head
+    px(-4, 2, 9, 7, '#e8892b'); px(-4, 7, 9, 2, '#f4c27a'); px(-4, 0, 2, 3, '#e8892b'); px(3, 0, 2, 3, '#e8892b'); px(-3, 1, 1, 2, '#ffaec0'); px(4, 1, 1, 2, '#ffaec0');
+    // stripes
+    px(-1, 3, 1, 2, '#9c5a14'); px(1, 3, 1, 2, '#9c5a14');
+    // eyes, nose
+    px(0, 5, 2, 2, '#0b0f2c'); px(3, 5, 2, 2, '#0b0f2c'); px(1, 5, 1, 1, '#ffffff'); px(4, 5, 1, 1, '#ffffff'); px(2, 7, 1, 1, '#ff6b8a');
+    // hard hat
+    px(-4, -2, 9, 3, '#ffd23c'); px(-5, 0, 11, 1, '#e0a900'); px(-1, -3, 3, 1, '#ffd23c'); px(0, -2, 1, 1, '#fff2a6');
+    // goggles on the hat
+    px(-3, -1, 3, 2, '#7fe9ff'); px(1, -1, 3, 2, '#7fe9ff'); px(0, -1, 1, 1, '#05060f');
+  }
+  let last = 0, T = 0;
+  function frame(ts) {
+    const dt = Math.min(0.05, (ts - last) / 1000 || 0.016); last = ts; T += dt;
+    let dx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), dy = (keys.arrowdown || keys.s ? 1 : 0) - (keys.arrowup || keys.w ? 1 : 0);
+    if (!dx && !dy && target.x != null) { const ex = target.x - P.x, ey = target.y - P.y, d = Math.hypot(ex, ey); if (d < 6) { target.x = null; if (target.go) { const g = target.go; target.go = null; enter(g); } } else { dx = ex / d; dy = ey / d; } }
+    const len = Math.hypot(dx, dy) || 1; P.moving = !!(dx || dy);
+    if (P.moving) { P.x += dx / len * 190 * dt * (Math.abs(dx) > 0 || Math.abs(dy) > 0 ? 1 : 0); P.y += dy / len * 190 * dt; if (dx) P.face = dx > 0 ? 1 : -1; }
+    P.x = Math.max(BOUND.x0, Math.min(BOUND.x1, P.x)); P.y = Math.max(target.go ? 380 : BOUND.y0, Math.min(BOUND.y1, P.y));
+    const n = near();
+    ctx.clearRect(0, 0, W, H); sky(); ground();
+    GAMES.forEach(g => building(g, g === n, T));
+    cat(T);
+    ctx.fillStyle = '#ffffffcc'; ctx.textAlign = 'center';
+    if (n) hint.innerHTML = 'Press <b>Enter</b> to open <b>' + n.name + '</b>'; else if (!/Opening/.test(hint.textContent)) hint.innerHTML = 'Walk up to a door. Keys <b>1</b> to <b>4</b> walk you straight to one.';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
